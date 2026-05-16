@@ -1,10 +1,47 @@
 # DevBoxOS
+![Go](https://img.shields.io/badge/Go-1.24-blue)
+![License](https://img.shields.io/badge/license-MIT-green)
+![Platform](https://img.shields.io/badge/platform-linux%20%7C%20windows%20%7C%20macos-black)
+![Status](https://img.shields.io/badge/status-alpha-orange)
 
-**One command. Any project. Everywhere.**
 
-DevBoxOS is a local-first development sandbox platform for reproducible multi-service development environments. Define your stack in `devbox.yml`, run `devbox start`, and DevBoxOS builds, starts, networks, secures, observes, snapshots, and tears down the environment on your machine.
+**Build. Run. Snapshot. Destroy. Repeat.**
+---
+## What is DevBoxOS?
 
-DevBoxOS v1 is intentionally **local-only**. It does not require a cloud account, hosted control plane, SaaS backend, or remote runner.
+DevBoxOS is a local-first development sandbox platform designed for reproducible multi-service environments.
+
+Instead of manually configuring Docker, networking, secrets, logs, health checks, and service orchestration for every project, DevBoxOS provides a unified CLI and configuration layer that manages the entire development lifecycle locally.
+
+DevBoxOS focuses on:
+
+- Reproducible development environments
+- Fast project onboarding
+- Local infrastructure orchestration
+- Snapshot and recovery workflows
+- Isolated runtime management
+- Developer-focused operational tooling
+
+The platform is intentionally local-first and does not require a cloud control plane, hosted backend, or external account.
+
+---
+
+## Why DevBoxOS Exists
+
+Modern local development is fragmented.
+
+Developers constantly rebuild the same infrastructure:
+- Docker Compose files
+- Local networking
+- Service discovery
+- Environment variables
+- Logs
+- Health checks
+- Secrets
+- Startup orchestration
+- Snapshot recovery
+
+DevBoxOS standardizes this workflow into a single local-first platform with one consistent developer experience.
 
 ---
 
@@ -886,11 +923,5 @@ When reporting a bug, include:
 - `devbox doctor` output
 - Relevant `devbox.yml`
 - Exact command and error output
-
----
-
-## License
-
-MIT. See `LICENSE`.
 
 ---
