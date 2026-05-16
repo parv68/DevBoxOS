@@ -448,12 +448,15 @@ func parseMemoryToMB(s string) int64 {
 	} else if strings.HasSuffix(s, "m") {
 		s = strings.TrimSuffix(s, "m")
 	} else if strings.HasSuffix(s, "k") {
-		multiplier = 1 / 1024
 		s = strings.TrimSuffix(s, "k")
+		multiplier = 0
 	}
 
 	var val int64
 	fmt.Sscanf(s, "%d", &val)
+	if multiplier == 0 {
+		return val
+	}
 	return val * multiplier
 }
 

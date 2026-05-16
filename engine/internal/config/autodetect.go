@@ -14,6 +14,7 @@ import (
 func AutoDetect(dir string) (*types.Config, error) {
 	cfg := &types.Config{
 		Services: make(map[string]types.Service),
+		Runtimes: make(map[string]string),
 	}
 
 	// Detect project name from directory

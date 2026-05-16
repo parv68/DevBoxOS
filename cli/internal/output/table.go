@@ -107,14 +107,14 @@ func DoctorProto(result *pb.DoctorResponse) {
 	for _, issue := range result.Issues {
 		switch issue.Severity {
 		case "error":
-			Error(issue.Message)
+			Error("%s", issue.Message)
 			if issue.Details != "" {
 				Dim("  %s", issue.Details)
 			}
 		case "warning":
-			Warning(issue.Message)
+			Warning("%s", issue.Message)
 		case "info":
-			Info(issue.Message)
+			Info("%s", issue.Message)
 		default:
 			fmt.Printf("  %s\n", issue.Message)
 		}

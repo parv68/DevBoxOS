@@ -11,6 +11,10 @@ import (
 var resetCmd = &cobra.Command{
 	Use:   "reset",
 	Short: "Tear down and rebuild environment from config",
+	Long: `Stop all services, clean up resources, and restart everything
+fresh from the devbox.yml configuration.
+
+Useful for applying config changes or recovering from a broken state.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dir, err := os.Getwd()
 		if err != nil {

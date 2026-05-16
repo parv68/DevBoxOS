@@ -122,6 +122,8 @@ func buildService(ctx context.Context, rt runtime.Runtime, name string, svc type
 		BuildArgs:  buildCfg.Args,
 		Target:     buildCfg.Target,
 		Tags:       tags,
+		NoCache:    buildNoCache,
+		Pull:       buildPull,
 	}
 
 	_, err := rt.BuildImage(ctx, buildOpts, statusChan)

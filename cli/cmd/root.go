@@ -40,5 +40,4 @@ func init() {
 	rootCmd.AddCommand(resetCmd)
 	rootCmd.AddCommand(doctorCmd)
 	rootCmd.AddCommand(configCmd)
-	rootCmd.AddCommand(secretsCmd)
 }

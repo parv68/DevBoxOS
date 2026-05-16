@@ -31,6 +31,7 @@ type ContainerInfo struct {
 	Networks  []string
 	StartedAt string
 	Health    string // healthy, unhealthy, starting, none
+	Labels    map[string]string
 }
 
 // PortMapping represents a port binding.
@@ -48,6 +49,8 @@ type BuildConfig struct {
 	BuildArgs  map[string]string // Build-time variables
 	Target     string            // Target stage for multi-stage builds
 	Tags       []string          // Image tags
+	NoCache    bool              // Do not use cache
+	Pull       bool              // Always pull base image
 }
 
 // LogOptions controls log streaming behavior.

@@ -175,7 +175,11 @@ func (o *Orchestrator) Start(ctx context.Context, cfg *types.Config, projectPath
 
 		// Start log collector (use background context since request context will be cancelled)
 		collector := logging.NewCollector(o.logStore, cfg.Name, name)
+		o.mu.Lock()
 		o.collectors[name] = collector
+		o.mu.Unlock()
+
+		// Start collection safely; the orchestrator tracks collectors via the mutex above.
 		collector.Start(context.Background(), o.rt, containerID)
 	}
 
@@ -252,10 +256,12 @@ func (o *Orchestrator) Stop(ctx context.Context, cfg *types.Config, gracePeriod 
 		statusChan <- fmt.Sprintf("Service %s stopped", name)
 
 		// Stop log collector
+		o.mu.Lock()
 		if collector, ok := o.collectors[name]; ok {
 			collector.Stop()
 			delete(o.collectors, name)
 		}
+		o.mu.Unlock()
 	}
 
 	o.mu.Lock()

@@ -356,7 +356,12 @@ func (m *Manager) Import(tarballPath string, statusChan chan<- string) error {
 func (m *Manager) exportVolume(ctx context.Context, volName, outputPath string, statusChan chan<- string) error {
 	statusChan <- fmt.Sprintf("Exporting volume: %s", volName)
 
-	// Create a temporary container to export the volume
+	tmpDir, err := os.MkdirTemp("", "devbox-vol-export-*")
+	if err != nil {
+		return fmt.Errorf("create temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
 	containerName := fmt.Sprintf("devbox-snapshot-export-%s", uuid.New().String()[:8])
 
 	containerConfig := runtime.ContainerConfig{
@@ -364,22 +369,43 @@ func (m *Manager) exportVolume(ctx context.Context, volName, outputPath string, 
 		Image: "alpine:latest",
 		Volumes: map[string]string{
 			volName: "/data",
+			tmpDir:  "/output",
 		},
-		Command: []string{"sh", "-c", "tar czf /tmp/vol.tar.gz -C /data . && cat /tmp/vol.tar.gz"},
+		Command: []string{"sh", "-c", "tar czf /output/vol.tar.gz -C /data ."},
 	}
 
 	containerID, err := m.rt.CreateContainer(ctx, containerConfig)
 	if err != nil {
 		return fmt.Errorf("create export container: %w", err)
 	}
+	defer m.rt.RemoveContainer(ctx, containerID, true)
 
-	// We can't easily stream from the container, so we'll use docker cp approach
-	// For now, mark as not exported
-	_ = m.rt.RemoveContainer(ctx, containerID, true)
+	if err := m.rt.StartContainer(ctx, containerID); err != nil {
+		return fmt.Errorf("start export container: %w", err)
+	}
 
-	// Alternative: use docker volume export (not available in SDK directly)
-	// We'll skip volume export for now and rely on container state
-	statusChan <- fmt.Sprintf("Volume export skipped: %s (not yet supported)", volName)
+	if err := m.waitForContainerExit(ctx, containerID, 60); err != nil {
+		return fmt.Errorf("wait for export: %w", err)
+	}
+
+	srcPath := filepath.Join(tmpDir, "vol.tar.gz")
+	input, err := os.Open(srcPath)
+	if err != nil {
+		return fmt.Errorf("open exported volume: %w", err)
+	}
+	defer input.Close()
+
+	output, err := os.Create(outputPath)
+	if err != nil {
+		return fmt.Errorf("create output file: %w", err)
+	}
+	defer output.Close()
+
+	if _, err := io.Copy(output, input); err != nil {
+		return fmt.Errorf("copy volume data: %w", err)
+	}
+
+	statusChan <- fmt.Sprintf("Volume exported: %s", volName)
 	return nil
 }
 
@@ -387,10 +413,33 @@ func (m *Manager) exportVolume(ctx context.Context, volName, outputPath string, 
 func (m *Manager) importVolume(ctx context.Context, volName, inputPath string, statusChan chan<- string) error {
 	statusChan <- fmt.Sprintf("Importing volume: %s", volName)
 
-	// Create volume if it doesn't exist
-	_ = m.rt.CreateVolume(ctx, volName)
+	if err := m.rt.CreateVolume(ctx, volName); err != nil {
+		return fmt.Errorf("create volume: %w", err)
+	}
 
-	// Create a temporary container to import the volume
+	tmpDir, err := os.MkdirTemp("", "devbox-vol-import-*")
+	if err != nil {
+		return fmt.Errorf("create temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	destPath := filepath.Join(tmpDir, "vol.tar.gz")
+	src, err := os.Open(inputPath)
+	if err != nil {
+		return fmt.Errorf("open input file: %w", err)
+	}
+	defer src.Close()
+
+	dest, err := os.Create(destPath)
+	if err != nil {
+		return fmt.Errorf("create temp file: %w", err)
+	}
+	dest.Close()
+
+	if _, err := io.Copy(dest, src); err != nil {
+		return fmt.Errorf("copy input: %w", err)
+	}
+
 	containerName := fmt.Sprintf("devbox-snapshot-import-%s", uuid.New().String()[:8])
 
 	containerConfig := runtime.ContainerConfig{
@@ -398,21 +447,51 @@ func (m *Manager) importVolume(ctx context.Context, volName, inputPath string, s
 		Image: "alpine:latest",
 		Volumes: map[string]string{
 			volName: "/data",
+			tmpDir:  "/input",
 		},
-		Command: []string{"sh", "-c", "tar xzf /tmp/vol.tar.gz -C /data"},
+		Command: []string{"sh", "-c", "tar xzf /input/vol.tar.gz -C /data"},
 	}
 
 	containerID, err := m.rt.CreateContainer(ctx, containerConfig)
 	if err != nil {
 		return fmt.Errorf("create import container: %w", err)
 	}
+	defer m.rt.RemoveContainer(ctx, containerID, true)
 
-	// Copy tarball to container
-	// This would require docker cp, which isn't in our runtime interface
-	_ = m.rt.RemoveContainer(ctx, containerID, true)
+	if err := m.rt.StartContainer(ctx, containerID); err != nil {
+		return fmt.Errorf("start import container: %w", err)
+	}
 
-	statusChan <- fmt.Sprintf("Volume import skipped: %s (not yet supported)", volName)
+	if err := m.waitForContainerExit(ctx, containerID, 60); err != nil {
+		return fmt.Errorf("wait for import: %w", err)
+	}
+
+	statusChan <- fmt.Sprintf("Volume imported: %s", volName)
 	return nil
+}
+
+// waitForContainerExit polls container status until it exits or times out.
+func (m *Manager) waitForContainerExit(ctx context.Context, containerID string, maxWaitSeconds int) error {
+	timeout := time.After(time.Duration(maxWaitSeconds) * time.Second)
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-timeout:
+			return fmt.Errorf("container did not exit within %d seconds", maxWaitSeconds)
+		case <-ticker.C:
+			info, err := m.rt.GetContainerInfo(ctx, containerID)
+			if err != nil {
+				return fmt.Errorf("get container info: %w", err)
+			}
+			if info.Status == "exited" || strings.HasPrefix(info.Status, "Exited") {
+				return nil
+			}
+		}
+	}
 }
 
 // calculateSnapshotSize calculates the total size and SHA-256 hash of a snapshot.

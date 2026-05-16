@@ -89,7 +89,6 @@ func (m *Manager) ExecuteHook(ctx context.Context, hook Hook, envVars map[string
 		executed = append(executed, plugin.Name)
 
 		cmdCtx, cancel := context.WithTimeout(ctx, plugin.Timeout)
-		defer cancel()
 
 		var cmd *exec.Cmd
 		if os.PathSeparator == '\\' {
@@ -114,6 +113,7 @@ func (m *Manager) ExecuteHook(ctx context.Context, hook Hook, envVars map[string
 		cmd.Env = append(cmd.Env, fmt.Sprintf("DEVBOX_PLUGIN=%s", plugin.Name))
 
 		output, err := cmd.CombinedOutput()
+		cancel()
 		if err != nil {
 			if cmdCtx.Err() == context.DeadlineExceeded {
 				return fmt.Errorf("plugin %s timed out after %s", plugin.Name, plugin.Timeout)

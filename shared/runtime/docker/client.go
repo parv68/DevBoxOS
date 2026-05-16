@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/devboxos/devboxos/shared/platform"
 	"github.com/devboxos/devboxos/shared/runtime"
 	"github.com/docker/docker/api/types/build"
 	"github.com/docker/docker/api/types/container"
@@ -35,9 +36,9 @@ func NewDockerRuntime() *DockerRuntime {
 func (d *DockerRuntime) Connect(ctx context.Context) error {
 	var opts []client.Opt
 
-	// On Windows, try TCP first (Docker Desktop exposes TCP on localhost)
-	if os.PathSeparator == '\\' {
-		// Try TCP connection first for Docker Desktop on Windows
+	switch platform.Detect() {
+	case platform.OSWindows:
+		// Try TCP first (Docker Desktop on Windows)
 		opts = append(opts, client.WithHost("tcp://127.0.0.1:2375"))
 		opts = append(opts, client.WithAPIVersionNegotiation())
 
@@ -52,10 +53,16 @@ func (d *DockerRuntime) Connect(ctx context.Context) error {
 
 		// Fall back to named pipe
 		opts = []client.Opt{
-			client.WithHost("npipe:////./pipe/docker_engine"),
+			client.WithHost(platform.DockerSocketPath()),
 			client.WithAPIVersionNegotiation(),
 		}
-	} else {
+
+	case platform.OSDarwin, platform.OSLinux:
+		// Unix socket (default)
+		opts = append(opts, client.WithHost(platform.DockerSocketPath()))
+		opts = append(opts, client.WithAPIVersionNegotiation())
+
+	default:
 		opts = append(opts, client.FromEnv)
 		opts = append(opts, client.WithAPIVersionNegotiation())
 	}
@@ -155,6 +162,8 @@ func (d *DockerRuntime) BuildImage(ctx context.Context, cfg runtime.BuildConfig,
 		BuildArgs:  buildArgs,
 		Target:     cfg.Target,
 		Remove:     true,
+		NoCache:    cfg.NoCache,
+		PullParent: cfg.Pull,
 	})
 	if err != nil {
 		return "", fmt.Errorf("start build: %w", err)
@@ -431,6 +440,7 @@ func (d *DockerRuntime) GetContainerInfo(ctx context.Context, id string) (runtim
 		Networks:  networks,
 		StartedAt: info.State.StartedAt,
 		Health:    health,
+		Labels:    info.Config.Labels,
 	}, nil
 }
 
@@ -460,12 +470,17 @@ func (d *DockerRuntime) ListContainers(ctx context.Context, labels map[string]st
 			})
 		}
 
+		name := ""
+		if len(c.Names) > 0 {
+			name = c.Names[0]
+		}
 		result = append(result, runtime.ContainerInfo{
 			ID:     c.ID,
-			Name:   c.Names[0],
+			Name:   name,
 			Image:  c.Image,
 			Status: c.State,
 			Ports:  ports,
+			Labels: c.Labels,
 		})
 	}
 

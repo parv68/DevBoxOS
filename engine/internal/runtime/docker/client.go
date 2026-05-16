@@ -155,6 +155,8 @@ func (d *DockerRuntime) BuildImage(ctx context.Context, cfg runtime.BuildConfig,
 		BuildArgs:  buildArgs,
 		Target:     cfg.Target,
 		Remove:     true,
+		NoCache:    cfg.NoCache,
+		PullParent: cfg.Pull,
 	})
 	if err != nil {
 		return "", fmt.Errorf("start build: %w", err)
@@ -460,12 +462,17 @@ func (d *DockerRuntime) ListContainers(ctx context.Context, labels map[string]st
 			})
 		}
 
+		name := ""
+		if len(c.Names) > 0 {
+			name = c.Names[0]
+		}
 		result = append(result, runtime.ContainerInfo{
 			ID:     c.ID,
-			Name:   c.Names[0],
+			Name:   name,
 			Image:  c.Image,
 			Status: c.State,
 			Ports:  ports,
+			Labels: c.Labels,
 		})
 	}
 
