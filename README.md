@@ -72,8 +72,8 @@ DevBoxOS solves local environment drift and onboarding friction by turning proje
 With DevBoxOS, a developer can run:
 
 ```bash
-git clone <repo>
-cd <repo>
+git clone https://github.com/parv68/DevBoxOS
+cd devbox
 devbox start
 ```
 
@@ -203,7 +203,7 @@ devbox doctor
 ### Build From Source
 
 ```bash
-git clone https://github.com/devboxos/devboxos.git
+git clone https://github.com/parv68/DevBoxOS
 cd devboxos
 
 go test ./shared/...
@@ -894,14 +894,3 @@ When reporting a bug, include:
 MIT. See `LICENSE`.
 
 ---
-
-## Commit Message For This Work
-
-```text
-docs: expand README for local v1 release
-
-Document DevBoxOS local-only v1 end to end, including installation,
-architecture, configuration, commands, snapshots, secrets, logs, plugins,
-cross-platform behavior, diagnostics, error codes, development workflow,
-release checklist, and roadmap boundaries.
-```
