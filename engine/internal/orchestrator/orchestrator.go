@@ -7,7 +7,9 @@ import (
 	"sync"
 
 	"github.com/devboxos/devboxos/engine/internal/networking"
-	"github.com/devboxos/devboxos/engine/internal/runtime"
+	"github.com/devboxos/devboxos/shared/logging"
+	"github.com/devboxos/devboxos/shared/plugins"
+	"github.com/devboxos/devboxos/shared/runtime"
 	"github.com/devboxos/devboxos/shared/secrets"
 	"github.com/devboxos/devboxos/shared/types"
 )
@@ -17,12 +19,15 @@ type Orchestrator struct {
 	rt          runtime.Runtime
 	lifecycle   *Lifecycle
 	resolver    *secrets.Resolver
+	pluginMgr   *plugins.Manager
+	logStore    *logging.Store
+	collectors  map[string]*logging.Collector
 	environment *types.EnvironmentStatus
 	mu          sync.Mutex
 }
 
 // NewOrchestrator creates a new environment orchestrator.
-func NewOrchestrator(rt runtime.Runtime, projectPath string) (*Orchestrator, error) {
+func NewOrchestrator(rt runtime.Runtime, projectPath string, cfg *types.Config) (*Orchestrator, error) {
 	keyPath := filepath.Join(projectPath, ".devbox", "secrets.key")
 	storePath := filepath.Join(projectPath, ".devbox", "secrets.enc")
 
@@ -32,9 +37,12 @@ func NewOrchestrator(rt runtime.Runtime, projectPath string) (*Orchestrator, err
 	}
 
 	return &Orchestrator{
-		rt:        rt,
-		lifecycle: NewLifecycle(rt, resolver),
-		resolver:  resolver,
+		rt:         rt,
+		lifecycle:  NewLifecycle(rt, resolver),
+		resolver:   resolver,
+		pluginMgr:  plugins.NewManager(projectPath, cfg.Plugins),
+		logStore:   logging.NewStore(projectPath),
+		collectors: make(map[string]*logging.Collector),
 		environment: &types.EnvironmentStatus{
 			Status: "stopped",
 		},
@@ -65,6 +73,16 @@ func (o *Orchestrator) Start(ctx context.Context, cfg *types.Config, projectPath
 	statusChan <- "Checking port availability..."
 	if err := o.checkPortConflicts(cfg); err != nil {
 		return fmt.Errorf("port conflict: %w", err)
+	}
+
+	// Step 2.5: Run pre-start plugins
+	if o.pluginMgr.HasHook(plugins.HookPreStart) {
+		statusChan <- "Running pre-start plugins..."
+		if err := o.pluginMgr.ExecuteHook(ctx, plugins.HookPreStart, map[string]string{
+			"DEVBOX_PROJECT_NAME": cfg.Name,
+		}); err != nil {
+			statusChan <- fmt.Sprintf("Warning: pre-start plugin failed: %v", err)
+		}
 	}
 
 	// Step 3: Create/verify project network
@@ -129,7 +147,7 @@ func (o *Orchestrator) Start(ctx context.Context, cfg *types.Config, projectPath
 		}
 
 		// Build container config with networking
-		containerID, err := o.lifecycle.StartService(ctx, name, svc, nw.Name)
+		containerID, err := o.lifecycle.StartService(ctx, name, svc, nw.Name, projectPath, statusChan)
 		if err != nil {
 			o.cleanup(ctx, containerIDs)
 			return fmt.Errorf("start service %s: %w", name, err)
@@ -154,6 +172,11 @@ func (o *Orchestrator) Start(ctx context.Context, cfg *types.Config, projectPath
 		} else {
 			statusChan <- fmt.Sprintf("Service %s started: %s", name, hostname)
 		}
+
+		// Start log collector (use background context since request context will be cancelled)
+		collector := logging.NewCollector(o.logStore, cfg.Name, name)
+		o.collectors[name] = collector
+		collector.Start(context.Background(), o.rt, containerID)
 	}
 
 	// Update status
@@ -161,6 +184,16 @@ func (o *Orchestrator) Start(ctx context.Context, cfg *types.Config, projectPath
 	o.mu.Lock()
 	o.environment.Status = "running"
 	o.mu.Unlock()
+
+	// Run post-start plugins
+	if o.pluginMgr.HasHook(plugins.HookPostStart) {
+		statusChan <- "Running post-start plugins..."
+		if err := o.pluginMgr.ExecuteHook(ctx, plugins.HookPostStart, map[string]string{
+			"DEVBOX_PROJECT_NAME": cfg.Name,
+		}); err != nil {
+			statusChan <- fmt.Sprintf("Warning: post-start plugin failed: %v", err)
+		}
+	}
 
 	statusChan <- "All services started"
 	return nil
@@ -171,6 +204,16 @@ func (o *Orchestrator) Stop(ctx context.Context, cfg *types.Config, gracePeriod 
 	o.mu.Lock()
 	o.environment.Status = "stopping"
 	o.mu.Unlock()
+
+	// Run pre-stop plugins
+	if o.pluginMgr.HasHook(plugins.HookPreStop) {
+		statusChan <- "Running pre-stop plugins..."
+		if err := o.pluginMgr.ExecuteHook(ctx, plugins.HookPreStop, map[string]string{
+			"DEVBOX_PROJECT_NAME": cfg.Name,
+		}); err != nil {
+			statusChan <- fmt.Sprintf("Warning: pre-stop plugin failed: %v", err)
+		}
+	}
 
 	// Build dependency graph for reverse order
 	graph := NewGraph()
@@ -207,12 +250,28 @@ func (o *Orchestrator) Stop(ctx context.Context, cfg *types.Config, gracePeriod 
 		}
 
 		statusChan <- fmt.Sprintf("Service %s stopped", name)
+
+		// Stop log collector
+		if collector, ok := o.collectors[name]; ok {
+			collector.Stop()
+			delete(o.collectors, name)
+		}
 	}
 
 	o.mu.Lock()
 	o.environment.Status = "stopped"
 	o.environment.Services = nil
 	o.mu.Unlock()
+
+	// Run post-stop plugins
+	if o.pluginMgr.HasHook(plugins.HookPostStop) {
+		statusChan <- "Running post-stop plugins..."
+		if err := o.pluginMgr.ExecuteHook(ctx, plugins.HookPostStop, map[string]string{
+			"DEVBOX_PROJECT_NAME": cfg.Name,
+		}); err != nil {
+			statusChan <- fmt.Sprintf("Warning: post-stop plugin failed: %v", err)
+		}
+	}
 
 	statusChan <- "All services stopped"
 	return nil

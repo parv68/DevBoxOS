@@ -12,10 +12,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/devboxos/devboxos/engine/internal/config"
+	"github.com/devboxos/devboxos/shared/config"
 	"github.com/devboxos/devboxos/engine/internal/orchestrator"
-	engineruntime "github.com/devboxos/devboxos/engine/internal/runtime"
-	dockerruntime "github.com/devboxos/devboxos/engine/internal/runtime/docker"
+	engineruntime "github.com/devboxos/devboxos/shared/runtime"
+	dockerruntime "github.com/devboxos/devboxos/shared/runtime/docker"
 	"github.com/devboxos/devboxos/engine/internal/state"
 	pb "github.com/devboxos/devboxos/engine/proto"
 	"google.golang.org/grpc"
@@ -28,8 +28,10 @@ const (
 // server implements the EngineService gRPC server.
 type server struct {
 	pb.UnimplementedEngineServiceServer
-	startedAt time.Time
-	stateMgr  *state.Manager
+	startedAt    time.Time
+	stateMgr     *state.Manager
+	orchestrator *orchestrator.Orchestrator
+	rt           engineruntime.Runtime
 }
 
 func (s *server) Ping(ctx context.Context, req *pb.PingRequest) (*pb.PingResponse, error) {
@@ -72,22 +74,27 @@ func (s *server) Start(req *pb.StartRequest, stream pb.EngineService_StartServer
 
 	send("info", fmt.Sprintf("Loaded %s (%d services)", cfg.Name, len(cfg.Services)), false)
 
-	// Create Docker runtime
-	rt := dockerruntime.NewDockerRuntime()
-	if err := rt.Connect(stream.Context()); err != nil {
-		send("error", fmt.Sprintf("Docker not available: %v", err), true)
-		return err
+	// Create Docker runtime (persist for log collection)
+	if s.rt == nil {
+		rt := dockerruntime.NewDockerRuntime()
+		if err := rt.Connect(stream.Context()); err != nil {
+			send("error", fmt.Sprintf("Docker not available: %v", err), true)
+			return err
+		}
+		s.rt = rt
 	}
-	defer rt.Close()
 
 	send("info", "Connected to Docker daemon", false)
 
 	// Create orchestrator
-	orch, err := orchestrator.NewOrchestrator(rt, req.ProjectPath)
+	orch, err := orchestrator.NewOrchestrator(s.rt, req.ProjectPath, cfg)
 	if err != nil {
 		send("error", fmt.Sprintf("Failed to create orchestrator: %v", err), true)
 		return err
 	}
+
+	// Store orchestrator for log collection and status tracking
+	s.orchestrator = orch
 
 	// Status channel for streaming updates
 	statusChan := make(chan string, 64)
@@ -130,22 +137,18 @@ func (s *server) Stop(ctx context.Context, req *pb.StopRequest) (*pb.StatusRespo
 		}, nil
 	}
 
-	// Create Docker runtime
-	rt := dockerruntime.NewDockerRuntime()
-	if err := rt.Connect(ctx); err != nil {
+	if s.rt == nil {
 		return &pb.StatusResponse{
 			Status: "error",
-			Error:  fmt.Sprintf("Docker not available: %v", err),
+			Error:  "Docker not available: engine not started",
 		}, nil
 	}
-	defer rt.Close()
 
-	// Create orchestrator
-	orch, err := orchestrator.NewOrchestrator(rt, req.ProjectPath)
-	if err != nil {
+	// Use stored orchestrator
+	if s.orchestrator == nil {
 		return &pb.StatusResponse{
 			Status: "error",
-			Error:  fmt.Sprintf("Failed to create orchestrator: %v", err),
+			Error:  "No active environment. Run 'devbox start' first.",
 		}, nil
 	}
 
@@ -158,7 +161,7 @@ func (s *server) Stop(ctx context.Context, req *pb.StopRequest) (*pb.StatusRespo
 		if req.GracePeriodSeconds > 0 {
 			gracePeriod = int(req.GracePeriodSeconds)
 		}
-		errChan <- orch.Stop(ctx, cfg, gracePeriod, statusChan)
+		errChan <- s.orchestrator.Stop(ctx, cfg, gracePeriod, statusChan)
 	}()
 
 	// Wait for completion
@@ -192,25 +195,21 @@ func (s *server) Status(ctx context.Context, req *pb.StatusRequest) (*pb.StatusR
 		}, nil
 	}
 
-	// Create Docker runtime
-	rt := dockerruntime.NewDockerRuntime()
-	if err := rt.Connect(ctx); err != nil {
+	if s.rt == nil {
 		return &pb.StatusResponse{
 			Status: "error",
-			Error:  fmt.Sprintf("Docker not available: %v", err),
+			Error:  "Docker not available: engine not started",
 		}, nil
 	}
-	defer rt.Close()
 
-	// Get status
-	orch, err := orchestrator.NewOrchestrator(rt, req.ProjectPath)
-	if err != nil {
+	// Use stored orchestrator
+	if s.orchestrator == nil {
 		return &pb.StatusResponse{
-			Status: "error",
-			Error:  fmt.Sprintf("Failed to create orchestrator: %v", err),
+			Status: "stopped",
 		}, nil
 	}
-	envStatus, err := orch.Status(ctx, cfg)
+
+	envStatus, err := s.orchestrator.Status(ctx, cfg)
 	if err != nil {
 		return &pb.StatusResponse{
 			Status: "error",

@@ -3,9 +3,10 @@ package orchestrator
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"time"
 
-	"github.com/devboxos/devboxos/engine/internal/runtime"
+	"github.com/devboxos/devboxos/shared/runtime"
 	"github.com/devboxos/devboxos/shared/secrets"
 	"github.com/devboxos/devboxos/shared/types"
 )
@@ -22,7 +23,7 @@ func NewLifecycle(rt runtime.Runtime, resolver *secrets.Resolver) *Lifecycle {
 }
 
 // StartService starts a single service.
-func (l *Lifecycle) StartService(ctx context.Context, name string, svc types.Service, networkName string) (string, error) {
+func (l *Lifecycle) StartService(ctx context.Context, name string, svc types.Service, networkName string, projectPath string, statusChan chan<- string) (string, error) {
 	// Build container config
 	cfg := runtime.ContainerConfig{
 		Name:       fmt.Sprintf("devbox-%s", name),
@@ -101,11 +102,38 @@ func (l *Lifecycle) StartService(ctx context.Context, name string, svc types.Ser
 		}
 	}
 
-	// Pull image if needed
-	if svc.Image != "" {
+	// Build image if build config is defined
+	if svc.Build != nil && svc.Build.Context != "" {
+		contextDir := svc.Build.Context
+		if !filepath.IsAbs(contextDir) {
+			contextDir = filepath.Join(projectPath, contextDir)
+		}
+
+		buildCfg := runtime.BuildConfig{
+			ContextDir: contextDir,
+			Dockerfile: svc.Build.Dockerfile,
+			BuildArgs:  svc.Build.Args,
+			Target:     svc.Build.Target,
+		}
+
+		builtImage, err := l.runtime.BuildImage(ctx, buildCfg, statusChan)
+		if err != nil {
+			return "", fmt.Errorf("build image for %s: %w", name, err)
+		}
+		cfg.Image = builtImage
+	} else if svc.Image != "" {
+		// Pull image if no build config
 		if err := l.runtime.PullImage(ctx, svc.Image); err != nil {
 			return "", fmt.Errorf("pull image %s: %w", svc.Image, err)
 		}
+	}
+
+	// Remove existing container if present
+	existingContainers, _ := l.runtime.ListContainers(ctx, map[string]string{
+		"devboxos.service": name,
+	})
+	for _, existing := range existingContainers {
+		_ = l.runtime.RemoveContainer(ctx, existing.ID, true)
 	}
 
 	// Create container

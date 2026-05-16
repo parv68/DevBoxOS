@@ -5,20 +5,21 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/devboxos/devboxos/engine/internal/runtime"
+	"github.com/devboxos/devboxos/shared/runtime"
 	"github.com/devboxos/devboxos/shared/secrets"
 	"github.com/devboxos/devboxos/shared/types"
 )
 
 // RecoveryManager handles service restart and recovery policies.
 type RecoveryManager struct {
-	rt       runtime.Runtime
-	resolver *secrets.Resolver
+	rt          runtime.Runtime
+	resolver    *secrets.Resolver
+	projectPath string
 }
 
 // NewRecoveryManager creates a new recovery manager.
-func NewRecoveryManager(rt runtime.Runtime, resolver *secrets.Resolver) *RecoveryManager {
-	return &RecoveryManager{rt: rt, resolver: resolver}
+func NewRecoveryManager(rt runtime.Runtime, resolver *secrets.Resolver, projectPath string) *RecoveryManager {
+	return &RecoveryManager{rt: rt, resolver: resolver, projectPath: projectPath}
 }
 
 // ApplyRestartPolicy applies the restart policy for a failed service.
@@ -68,7 +69,8 @@ func (r *RecoveryManager) ApplyRestartPolicy(ctx context.Context, name string, s
 
 		// Recreate and restart
 		lifecycle := NewLifecycle(r.rt, r.resolver)
-		newID, err := lifecycle.StartService(ctx, name, svc, networkName)
+		discardChan := make(chan string, 64)
+		newID, err := lifecycle.StartService(ctx, name, svc, networkName, r.projectPath, discardChan)
 		if err != nil {
 			if attempt == maxRetries {
 				return fmt.Errorf("failed to restart %s after %d attempts: %w", name, maxRetries, err)

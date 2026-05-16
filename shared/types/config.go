@@ -46,8 +46,11 @@ type Service struct {
 
 // BuildConfig represents Docker build configuration.
 type BuildConfig struct {
-	Context    string `yaml:"context" json:"context"`
-	Dockerfile string `yaml:"dockerfile,omitempty" json:"dockerfile,omitempty"`
+	Context    string            `yaml:"context" json:"context"`
+	Dockerfile string            `yaml:"dockerfile,omitempty" json:"dockerfile,omitempty"`
+	Target     string            `yaml:"target,omitempty" json:"target,omitempty"`
+	Args       map[string]string `yaml:"args,omitempty" json:"args,omitempty"`
+	Tags       []string          `yaml:"tags,omitempty" json:"tags,omitempty"`
 }
 
 // Healthcheck represents service health check configuration.
@@ -124,7 +127,10 @@ type AWSConfig struct {
 // Plugin represents a plugin configuration.
 type Plugin struct {
 	Name    string                 `yaml:"name" json:"name"`
+	Command string                 `yaml:"command,omitempty" json:"command,omitempty"`
 	Version string                 `yaml:"version,omitempty" json:"version,omitempty"`
+	On      []string               `yaml:"on,omitempty" json:"on,omitempty"`
+	Timeout int                    `yaml:"timeout,omitempty" json:"timeout,omitempty"`
 	Config  map[string]interface{} `yaml:"config,omitempty" json:"config,omitempty"`
 }
 

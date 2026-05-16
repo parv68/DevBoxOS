@@ -1,0 +1,17 @@
+name: test-build-app
+version: "1.0"
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    port: "8090:80"
+
+plugins:
+  - name: notify-start
+    command: echo "Environment started for $DEVBOX_PROJECT_NAME"
+    on: [post-start]
+  - name: notify-stop
+    command: echo "Environment stopped for $DEVBOX_PROJECT_NAME"
+    on: [post-stop]
