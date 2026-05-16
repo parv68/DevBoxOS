@@ -1,0 +1,192 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DevBoxOS Configuration",
+  "description": "Schema for devbox.yml configuration files",
+  "type": "object",
+  "required": ["name", "version", "services"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Project name",
+      "minLength": 1,
+      "pattern": "^[a-z0-9][a-z0-9_-]*$"
+    },
+    "version": {
+      "type": "string",
+      "description": "Configuration version (semver)",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "runtimes": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "services": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "oneOf": [
+          { "required": ["image"] },
+          { "required": ["runtime"] },
+          { "required": ["build"] }
+        ],
+        "properties": {
+          "image": { "type": "string" },
+          "runtime": { "type": "string" },
+          "build": {
+            "type": "object",
+            "required": ["context"],
+            "properties": {
+              "context": { "type": "string" },
+              "dockerfile": { "type": "string" }
+            }
+          },
+          "command": { "type": "string" },
+          "args": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "working_dir": { "type": "string" },
+          "port": {
+            "oneOf": [
+              { "type": "integer", "minimum": 1, "maximum": 65535 },
+              { "type": "string", "pattern": "^[0-9]+:[0-9]+$" }
+            ]
+          },
+          "ports": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                { "type": "integer" },
+                { "type": "string" }
+              ]
+            }
+          },
+          "protocol": { "type": "string", "enum": ["tcp", "udp"] },
+          "depends_on": {
+            "type": "array",
+            "items": { "type": "string" },
+            "uniqueItems": true
+          },
+          "env": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          },
+          "env_file": { "type": "string" },
+          "data": { "type": "string" },
+          "volumes": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "healthcheck": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["http", "tcp", "cmd"] },
+              "path": { "type": "string" },
+              "command": { "type": "string" },
+              "interval": { "type": "string", "pattern": "^[0-9]+[smh]$" },
+              "timeout": { "type": "string", "pattern": "^[0-9]+[smh]$" },
+              "retries": { "type": "integer", "minimum": 1 },
+              "start_period": { "type": "string", "pattern": "^[0-9]+[smh]$" }
+            }
+          },
+          "resources": {
+            "type": "object",
+            "properties": {
+              "memory": { "type": "string", "pattern": "^[0-9]+[mkg]b?$" },
+              "cpu": { "type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?$" },
+              "disk": { "type": "string", "pattern": "^[0-9]+[mkg]b?$" }
+            }
+          },
+          "restart_policy": {
+            "type": "object",
+            "properties": {
+              "on_failure": { "type": "boolean" },
+              "always": { "type": "boolean" },
+              "max_retries": { "type": "integer", "minimum": 0 },
+              "backoff": { "type": "string", "enum": ["linear", "exponential"] }
+            }
+          },
+          "security": {
+            "type": "object",
+            "properties": {
+              "tls": { "type": "boolean" },
+              "capabilities": {
+                "type": "array",
+                "items": { "type": "string" }
+              },
+              "read_only": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    "networking": {
+      "type": "object",
+      "properties": {
+        "discovery": { "type": "boolean" },
+        "expose": {
+          "type": "array",
+          "items": { "type": "integer", "minimum": 1, "maximum": 65535 }
+        },
+        "egress": { "type": "string", "enum": ["default-deny", "allow-all"] }
+      }
+    },
+    "security": {
+      "type": "object",
+      "properties": {
+        "tls": { "type": "string", "enum": ["mTLS", "disabled"] },
+        "capabilities": { "type": "string", "enum": ["default", "custom"] }
+      }
+    },
+    "secrets": {
+      "type": "object",
+      "properties": {
+        "source": { "type": "string" },
+        "vault": {
+          "type": "object",
+          "required": ["address", "path"],
+          "properties": {
+            "address": { "type": "string" },
+            "path": { "type": "string" }
+          }
+        },
+        "onepassword": {
+          "type": "object",
+          "required": ["vault"],
+          "properties": {
+            "vault": { "type": "string" }
+          }
+        },
+        "aws": {
+          "type": "object",
+          "required": ["region"],
+          "properties": {
+            "region": { "type": "string" },
+            "prefix": { "type": "string" }
+          }
+        }
+      }
+    },
+    "plugins": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "properties": {
+          "name": { "type": "string" },
+          "version": { "type": "string" },
+          "config": { "type": "object" }
+        }
+      }
+    },
+    "telemetry": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" }
+      }
+    }
+  }
+}

@@ -1,0 +1,183 @@
+syntax = "proto3";
+package engine;
+
+option go_package = "github.com/devboxos/devboxos/engine/proto;enginepb";
+
+service EngineService {
+  rpc Start(StartRequest) returns (stream StreamResponse);
+  rpc Stop(StopRequest) returns (StatusResponse);
+  rpc Status(StatusRequest) returns (StatusResponse);
+  rpc Logs(LogsRequest) returns (stream LogEntry);
+  rpc SnapshotSave(SnapshotSaveRequest) returns (stream StreamResponse);
+  rpc SnapshotLoad(SnapshotLoadRequest) returns (stream StreamResponse);
+  rpc SnapshotList(SnapshotListRequest) returns (SnapshotListResponse);
+  rpc SnapshotDelete(SnapshotDeleteRequest) returns (StatusResponse);
+  rpc Doctor(DoctorRequest) returns (DoctorResponse);
+  rpc Reset(ResetRequest) returns (stream StreamResponse);
+  rpc Ping(PingRequest) returns (PingResponse);
+  rpc SecretSet(SecretSetRequest) returns (StatusResponse);
+  rpc SecretGet(SecretGetRequest) returns (SecretGetResponse);
+  rpc SecretList(SecretListRequest) returns (SecretListResponse);
+  rpc SecretDelete(SecretDeleteRequest) returns (StatusResponse);
+  rpc SecretRotate(SecretRotateRequest) returns (StatusResponse);
+}
+
+message PingRequest {}
+
+message PingResponse {
+  string version = 1;
+  int64 uptime = 2;
+}
+
+message StartRequest {
+  string project_path = 1;
+  bool force = 2;
+}
+
+message StopRequest {
+  string project_path = 1;
+  string service = 2;
+  int32 grace_period_seconds = 3;
+}
+
+message StatusRequest {
+  string project_path = 1;
+}
+
+message LogsRequest {
+  string project_path = 1;
+  string service = 2;
+  int32 tail = 3;
+  string since = 4;
+  bool follow = 5;
+}
+
+message LogEntry {
+  string service = 1;
+  string timestamp = 2;
+  string level = 3;
+  string message = 4;
+  bytes raw = 5;
+}
+
+message StatusResponse {
+  string status = 1;
+  repeated ServiceStatus services = 2;
+  string error = 3;
+}
+
+message ServiceStatus {
+  string name = 1;
+  string status = 2;
+  string health = 3;
+  int32 port = 4;
+  string container_id = 5;
+  int32 restart_count = 6;
+}
+
+message StreamResponse {
+  string status = 1;
+  string message = 2;
+  bool done = 3;
+  string error = 4;
+}
+
+message SnapshotSaveRequest {
+  string project_path = 1;
+  string name = 2;
+  bool include_logs = 3;
+}
+
+message SnapshotLoadRequest {
+  string project_path = 1;
+  string snapshot_id = 2;
+  string snapshot_path = 3;
+  bool force = 4;
+}
+
+message SnapshotListRequest {
+  string project_path = 1;
+}
+
+message SnapshotListResponse {
+  repeated Snapshot snapshots = 1;
+}
+
+message Snapshot {
+  string id = 1;
+  string name = 2;
+  int64 size_bytes = 3;
+  string hash_sha256 = 4;
+  string created_at = 5;
+  string metadata = 6;
+}
+
+message SnapshotDeleteRequest {
+  string project_path = 1;
+  string snapshot_id = 2;
+}
+
+message DoctorRequest {
+  string project_path = 1;
+  string service = 2;
+}
+
+message DoctorResponse {
+  repeated DiagnosticIssue issues = 1;
+  repeated string suggestions = 2;
+}
+
+message DiagnosticIssue {
+  string severity = 1;
+  string service = 2;
+  string message = 3;
+  string details = 4;
+}
+
+message ResetRequest {
+  string project_path = 1;
+  bool force = 2;
+}
+
+message SecretSetRequest {
+  string project_path = 1;
+  string name = 2;
+  string value = 3;
+}
+
+message SecretGetRequest {
+  string project_path = 1;
+  string name = 2;
+}
+
+message SecretGetResponse {
+  string name = 1;
+  string value = 2;
+  string error = 3;
+}
+
+message SecretListRequest {
+  string project_path = 1;
+}
+
+message SecretListResponse {
+  repeated SecretEntry secrets = 1;
+  string error = 2;
+}
+
+message SecretEntry {
+  string name = 1;
+  string source = 2;
+  string created_at = 3;
+  string updated_at = 4;
+}
+
+message SecretDeleteRequest {
+  string project_path = 1;
+  string name = 2;
+}
+
+message SecretRotateRequest {
+  string project_path = 1;
+  string name = 2;
+}

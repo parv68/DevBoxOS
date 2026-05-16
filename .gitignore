@@ -1,0 +1,35 @@
+# Binaries
+dist/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Go
+*.test
+*.out
+coverage.out
+
+# Dependencies
+vendor/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# DevBoxOS local state
+~/.devbox/
+
+# Config files that may contain secrets
+.env.devbox
+.env.devbox.age
+*.devbox
+
+

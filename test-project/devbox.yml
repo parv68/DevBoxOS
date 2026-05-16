@@ -1,0 +1,23 @@
+name: test-app
+version: "1.0"
+
+services:
+  web:
+    image: nginx:alpine
+    port: "8080:80"
+    secrets:
+      - name: API_KEY
+        source: generate:32
+      - name: APP_SECRET
+        source: generate:64
+
+  redis:
+    image: redis:7-alpine
+    port: "6379:6379"
+    secrets:
+      - name: REDIS_PASSWORD
+        source: generate:32:alphanumeric
+
+networking:
+  discovery: true
+  expose: [8080]
