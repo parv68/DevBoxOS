@@ -2,16 +2,57 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"time"
 
 	pb "github.com/devboxos/devboxos/engine/proto"
+	"github.com/devboxos/devboxos/shared/platform"
 	"github.com/devboxos/devboxos/shared/types"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
+
+func configPath() string {
+	return filepath.Join(platform.ConfigDir(), "config.json")
+}
+
+func loadConfig() (map[string]string, error) {
+	cfg := map[string]string{
+		"telemetry": "true",
+		"engine":    "auto",
+	}
+	data, err := os.ReadFile(configPath())
+	if err != nil {
+		if os.IsNotExist(err) {
+			return cfg, nil
+		}
+		return nil, err
+	}
+	var fileCfg map[string]string
+	if err := json.Unmarshal(data, &fileCfg); err != nil {
+		return cfg, nil
+	}
+	for k, v := range fileCfg {
+		cfg[k] = v
+	}
+	return cfg, nil
+}
+
+func saveConfig(cfg map[string]string) error {
+	dir := filepath.Dir(configPath())
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(cfg, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(configPath(), data, 0644)
+}
 
 // Client is the gRPC client for communicating with the engine daemon.
 type Client struct {
@@ -21,17 +62,7 @@ type Client struct {
 
 // New creates a new engine client.
 func New() (*Client, error) {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return nil, fmt.Errorf("get home directory: %w", err)
-	}
-
-	var addr string
-	if os.PathSeparator == '\\' {
-		addr = "127.0.0.1:51000"
-	} else {
-		addr = "unix://" + filepath.Join(homeDir, ".devbox", "engine.sock")
-	}
+	addr := platform.EngineAddress()
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -162,6 +193,9 @@ func (c *Client) Logs(dir, service string) error {
 
 	for {
 		entry, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
 		if err != nil {
 			return fmt.Errorf("stream: %w", err)
 		}
@@ -207,15 +241,12 @@ func (c *Client) Reset(dir string) error {
 
 // GetConfig returns the current CLI configuration.
 func (c *Client) GetConfig() (map[string]string, error) {
-	return map[string]string{
-		"telemetry": "true",
-		"engine":    "auto",
-	}, nil
+	return loadConfig()
 }
 
 // GetConfigKey returns a specific configuration value.
 func (c *Client) GetConfigKey(key string) (string, error) {
-	cfg, err := c.GetConfig()
+	cfg, err := loadConfig()
 	if err != nil {
 		return "", err
 	}
@@ -227,5 +258,10 @@ func (c *Client) GetConfigKey(key string) (string, error) {
 
 // SetConfigKey sets a specific configuration value.
 func (c *Client) SetConfigKey(key, value string) error {
-	return nil
+	cfg, err := loadConfig()
+	if err != nil {
+		return err
+	}
+	cfg[key] = value
+	return saveConfig(cfg)
 }

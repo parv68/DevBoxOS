@@ -6,7 +6,7 @@ import (
 	"net"
 	"sync"
 
-	"github.com/devboxos/devboxos/engine/internal/runtime"
+	"github.com/devboxos/devboxos/shared/runtime"
 )
 
 // Manager handles per-project Docker network lifecycle.

@@ -28,11 +28,11 @@ var startCmd = &cobra.Command{
 		err = conn.Start(dir, func(status, msg string) {
 			switch status {
 			case "info":
-				output.Info(msg)
+				output.Info("%s", msg)
 			case "error":
-				output.Error(msg)
+				output.Error("%s", msg)
 			case "warning":
-				output.Warning(msg)
+				output.Warning("%s", msg)
 			default:
 				fmt.Println(msg)
 			}

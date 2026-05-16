@@ -1,13 +1,17 @@
 package docker
 
 import (
+	"archive/tar"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strconv"
 
-	"github.com/devboxos/devboxos/engine/internal/runtime"
+	"github.com/devboxos/devboxos/shared/runtime"
+	"github.com/docker/docker/api/types/build"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/api/types/image"
@@ -102,6 +106,201 @@ func (d *DockerRuntime) PullImage(ctx context.Context, imageName string) error {
 	}
 
 	return nil
+}
+
+// BuildImage builds a container image from a Dockerfile.
+func (d *DockerRuntime) BuildImage(ctx context.Context, cfg runtime.BuildConfig, statusChan chan<- string) (string, error) {
+	contextDir := cfg.ContextDir
+	if contextDir == "" {
+		return "", fmt.Errorf("build context directory is required")
+	}
+
+	contextDir = filepath.Clean(contextDir)
+	if _, err := os.Stat(contextDir); err != nil {
+		return "", fmt.Errorf("build context %s: %w", contextDir, err)
+	}
+
+	dockerfile := cfg.Dockerfile
+	if dockerfile == "" {
+		dockerfile = "Dockerfile"
+	}
+
+	dockerfilePath := filepath.Join(contextDir, dockerfile)
+	if _, err := os.Stat(dockerfilePath); err != nil {
+		return "", fmt.Errorf("dockerfile %s: %w", dockerfilePath, err)
+	}
+
+	tags := cfg.Tags
+	if len(tags) == 0 {
+		tags = []string{fmt.Sprintf("devbox-%s:latest", filepath.Base(contextDir))}
+	}
+
+	buildArgs := make(map[string]*string)
+	for k, v := range cfg.BuildArgs {
+		val := v
+		buildArgs[k] = &val
+	}
+
+	statusChan <- fmt.Sprintf("Building image from %s...", contextDir)
+
+	tarContext, err := createBuildTar(contextDir, dockerfile)
+	if err != nil {
+		return "", fmt.Errorf("create build context tar: %w", err)
+	}
+	defer tarContext.Close()
+
+	resp, err := d.cli.ImageBuild(ctx, tarContext, build.ImageBuildOptions{
+		Dockerfile: dockerfile,
+		Tags:       tags,
+		BuildArgs:  buildArgs,
+		Target:     cfg.Target,
+		Remove:     true,
+		NoCache:    cfg.NoCache,
+		PullParent: cfg.Pull,
+	})
+	if err != nil {
+		return "", fmt.Errorf("start build: %w", err)
+	}
+	defer resp.Body.Close()
+
+	decoder := json.NewDecoder(resp.Body)
+	var imageID string
+
+	for {
+		var msg struct {
+			Stream      string `json:"stream"`
+			Error       string `json:"error"`
+			ErrorDetail struct {
+				Message string `json:"message"`
+			} `json:"errorDetail"`
+			Aux struct {
+				ID string `json:"ID"`
+			} `json:"aux"`
+		}
+
+		if err := decoder.Decode(&msg); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return "", fmt.Errorf("read build output: %w", err)
+		}
+
+		if msg.Error != "" {
+			return "", fmt.Errorf("build failed: %s", msg.Error)
+		}
+
+		if msg.Stream != "" {
+			statusChan <- msg.Stream
+		}
+
+		if msg.Aux.ID != "" {
+			imageID = msg.Aux.ID
+		}
+	}
+
+	if imageID == "" {
+		return "", fmt.Errorf("build completed but no image ID returned")
+	}
+
+	statusChan <- fmt.Sprintf("Build complete: %s", tags[0])
+	return tags[0], nil
+}
+
+// createBuildTar creates a tar archive of the build context.
+func createBuildTar(contextDir, dockerfile string) (io.ReadCloser, error) {
+	pipeReader, pipeWriter := io.Pipe()
+	tarWriter := tar.NewWriter(pipeWriter)
+
+	go func() {
+		defer pipeWriter.Close()
+
+		err := filepath.Walk(contextDir, func(path string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+
+			relPath, err := filepath.Rel(contextDir, path)
+			if err != nil {
+				return err
+			}
+
+			if relPath == "." {
+				return nil
+			}
+
+			if shouldIgnore(relPath, dockerfile) {
+				if info.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+
+			header, err := tar.FileInfoHeader(info, "")
+			if err != nil {
+				return err
+			}
+
+			header.Name = filepath.ToSlash(relPath)
+
+			if info.IsDir() {
+				header.Name += "/"
+				header.Size = 0
+			}
+
+			if err := tarWriter.WriteHeader(header); err != nil {
+				return err
+			}
+
+			if info.IsDir() {
+				return nil
+			}
+
+			file, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+			defer file.Close()
+
+			_, err = io.Copy(tarWriter, file)
+			return err
+		})
+
+		if err != nil {
+			pipeWriter.CloseWithError(err)
+		}
+	}()
+
+	return pipeReader, nil
+}
+
+// shouldIgnore checks if a path should be excluded from the build context.
+func shouldIgnore(path, dockerfile string) bool {
+	ignorePatterns := []string{
+		".git",
+		".gitignore",
+		".devbox",
+		"node_modules",
+		"__pycache__",
+		".pytest_cache",
+		".tox",
+		".venv",
+		"venv",
+		"dist",
+		"build",
+		"*.exe",
+		"*.dll",
+		"*.so",
+		"*.dylib",
+	}
+
+	for _, pattern := range ignorePatterns {
+		matched, _ := filepath.Match(pattern, filepath.Base(path))
+		if matched {
+			return true
+		}
+	}
+
+	return false
 }
 
 // CreateContainer creates a new container.
@@ -263,12 +462,17 @@ func (d *DockerRuntime) ListContainers(ctx context.Context, labels map[string]st
 			})
 		}
 
+		name := ""
+		if len(c.Names) > 0 {
+			name = c.Names[0]
+		}
 		result = append(result, runtime.ContainerInfo{
 			ID:     c.ID,
-			Name:   c.Names[0],
+			Name:   name,
 			Image:  c.Image,
 			Status: c.State,
 			Ports:  ports,
+			Labels: c.Labels,
 		})
 	}
 

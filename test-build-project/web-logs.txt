@@ -1,0 +1,83 @@
+2026-05-16T15:54:16.715870299Z /docker-entrypoint.sh: /docker-entrypoint.d/ is not empty, will attempt to perform configuration
+2026-05-16T15:54:16.715906100Z /docker-entrypoint.sh: Looking for shell scripts in /docker-entrypoint.d/
+2026-05-16T15:54:16.717394881Z /docker-entrypoint.sh: Launching /docker-entrypoint.d/10-listen-on-ipv6-by-default.sh
+2026-05-16T15:54:16.729729363Z 10-listen-on-ipv6-by-default.sh: info: Getting the checksum of /etc/nginx/conf.d/default.conf
+2026-05-16T15:54:16.743759657Z 10-listen-on-ipv6-by-default.sh: info: /etc/nginx/conf.d/default.conf differs from the packaged version
+2026-05-16T15:54:16.744056487Z /docker-entrypoint.sh: Sourcing /docker-entrypoint.d/15-local-resolvers.envsh
+2026-05-16T15:54:16.744175088Z /docker-entrypoint.sh: Launching /docker-entrypoint.d/20-envsubst-on-templates.sh
+2026-05-16T15:54:16.748746638Z /docker-entrypoint.sh: Launching /docker-entrypoint.d/30-tune-worker-processes.sh
+2026-05-16T15:54:16.750542612Z /docker-entrypoint.sh: Configuration complete; ready for start up
+2026-05-16T15:54:16.760540625Z 2026/05/16 15:54:16 [notice] 1#1: using the "epoll" event method
+2026-05-16T15:54:16.760569352Z 2026/05/16 15:54:16 [notice] 1#1: nginx/1.31.0
+2026-05-16T15:54:16.760575154Z 2026/05/16 15:54:16 [notice] 1#1: built by gcc 15.2.0 (Alpine 15.2.0)
+2026-05-16T15:54:16.760579533Z 2026/05/16 15:54:16 [notice] 1#1: OS: Linux 6.6.87.2-microsoft-standard-WSL2
+2026-05-16T15:54:16.760583541Z 2026/05/16 15:54:16 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1048576:1048576
+2026-05-16T15:54:16.761635403Z 2026/05/16 15:54:16 [notice] 1#1: start worker processes
+2026-05-16T15:54:16.761925038Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 29
+2026-05-16T15:54:16.762241254Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 30
+2026-05-16T15:54:16.762553658Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 31
+2026-05-16T15:54:16.762936192Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 32
+2026-05-16T15:54:16.763320729Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 33
+2026-05-16T15:54:16.763699204Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 34
+2026-05-16T15:54:16.764062359Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 35
+2026-05-16T15:54:16.764531450Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 36
+2026-05-16T15:54:16.765070506Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 37
+2026-05-16T15:54:16.766059810Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 38
+2026-05-16T15:54:16.766529067Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 39
+2026-05-16T15:54:16.767123674Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 40
+2026-05-16T15:54:16.767934006Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 41
+2026-05-16T15:54:16.768479765Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 42
+2026-05-16T15:54:16.769382091Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 43
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44
+2026-05-16T15:54:16.770155595Z 2026/05/16 15:54:16 [notice] 1#1: start worker process 44

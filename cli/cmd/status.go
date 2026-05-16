@@ -12,6 +12,9 @@ import (
 var statusCmd = &cobra.Command{
 	Use:   "status",
 	Short: "Show running services and environment health",
+	Long: `Display the current status of all services in the DevBoxOS environment.
+
+Shows each service's name, health status, port mappings, and uptime.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dir, err := os.Getwd()
 		if err != nil {

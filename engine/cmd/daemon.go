@@ -8,28 +8,30 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"path/filepath"
+	"sync"
 	"syscall"
 	"time"
 
-	"github.com/devboxos/devboxos/engine/internal/config"
-	"github.com/devboxos/devboxos/engine/internal/orchestrator"
-	engineruntime "github.com/devboxos/devboxos/engine/internal/runtime"
-	dockerruntime "github.com/devboxos/devboxos/engine/internal/runtime/docker"
 	"github.com/devboxos/devboxos/engine/internal/state"
 	pb "github.com/devboxos/devboxos/engine/proto"
+	"github.com/devboxos/devboxos/shared/config"
+	"github.com/devboxos/devboxos/shared/platform"
+	"github.com/devboxos/devboxos/shared/runtime"
+	"github.com/devboxos/devboxos/shared/runtime/docker"
+	"github.com/devboxos/devboxos/shared/snapshot"
+	"github.com/devboxos/devboxos/engine/internal/orchestrator"
 	"google.golang.org/grpc"
 )
 
-const (
-	version = "0.1.0-dev"
-)
+var version = "0.1.0-dev"
 
-// server implements the EngineService gRPC server.
 type server struct {
 	pb.UnimplementedEngineServiceServer
-	startedAt time.Time
-	stateMgr  *state.Manager
+	startedAt    time.Time
+	stateMgr     *state.Manager
+	orchestrator *orchestrator.Orchestrator
+	rt           runtime.Runtime
+	mu           sync.Mutex
 }
 
 func (s *server) Ping(ctx context.Context, req *pb.PingRequest) (*pb.PingResponse, error) {
@@ -72,22 +74,33 @@ func (s *server) Start(req *pb.StartRequest, stream pb.EngineService_StartServer
 
 	send("info", fmt.Sprintf("Loaded %s (%d services)", cfg.Name, len(cfg.Services)), false)
 
-	// Create Docker runtime
-	rt := dockerruntime.NewDockerRuntime()
-	if err := rt.Connect(stream.Context()); err != nil {
-		send("error", fmt.Sprintf("Docker not available: %v", err), true)
-		return err
+	// Create Docker runtime (persist for log collection)
+	s.mu.Lock()
+	if s.rt == nil {
+		s.mu.Unlock()
+		rt := docker.NewDockerRuntime()
+		if err := rt.Connect(stream.Context()); err != nil {
+			send("error", fmt.Sprintf("Docker not available: %v", err), true)
+			return err
+		}
+		s.mu.Lock()
+		s.rt = rt
 	}
-	defer rt.Close()
+	s.mu.Unlock()
 
 	send("info", "Connected to Docker daemon", false)
 
 	// Create orchestrator
-	orch, err := orchestrator.NewOrchestrator(rt, req.ProjectPath)
+	orch, err := orchestrator.NewOrchestrator(s.rt, req.ProjectPath, cfg)
 	if err != nil {
 		send("error", fmt.Sprintf("Failed to create orchestrator: %v", err), true)
 		return err
 	}
+
+	// Store orchestrator for log collection and status tracking
+	s.mu.Lock()
+	s.orchestrator = orch
+	s.mu.Unlock()
 
 	// Status channel for streaming updates
 	statusChan := make(chan string, 64)
@@ -130,34 +143,30 @@ func (s *server) Stop(ctx context.Context, req *pb.StopRequest) (*pb.StatusRespo
 		}, nil
 	}
 
-	// Create Docker runtime
-	rt := dockerruntime.NewDockerRuntime()
-	if err := rt.Connect(ctx); err != nil {
-		return &pb.StatusResponse{
-			Status: "error",
-			Error:  fmt.Sprintf("Docker not available: %v", err),
-		}, nil
-	}
-	defer rt.Close()
+	s.mu.Lock()
+	rt := s.rt
+	orch := s.orchestrator
+	s.mu.Unlock()
 
-	// Create orchestrator
-	orch, err := orchestrator.NewOrchestrator(rt, req.ProjectPath)
-	if err != nil {
+	if rt == nil {
 		return &pb.StatusResponse{
 			Status: "error",
-			Error:  fmt.Sprintf("Failed to create orchestrator: %v", err),
+			Error:  "Docker not available: engine not started",
 		}, nil
 	}
 
-	// Status channel
+	if orch == nil {
+		return &pb.StatusResponse{
+			Status: "error",
+			Error:  "No active environment. Run 'devbox start' first.",
+		}, nil
+	}
+
 	statusChan := make(chan string, 64)
 	errChan := make(chan error, 1)
+	gracePeriod := 30
 
 	go func() {
-		gracePeriod := 30
-		if req.GracePeriodSeconds > 0 {
-			gracePeriod = int(req.GracePeriodSeconds)
-		}
 		errChan <- orch.Stop(ctx, cfg, gracePeriod, statusChan)
 	}()
 
@@ -192,24 +201,24 @@ func (s *server) Status(ctx context.Context, req *pb.StatusRequest) (*pb.StatusR
 		}, nil
 	}
 
-	// Create Docker runtime
-	rt := dockerruntime.NewDockerRuntime()
-	if err := rt.Connect(ctx); err != nil {
+	if s.rt == nil {
 		return &pb.StatusResponse{
 			Status: "error",
-			Error:  fmt.Sprintf("Docker not available: %v", err),
+			Error:  "Docker not available: engine not started",
 		}, nil
 	}
-	defer rt.Close()
 
-	// Get status
-	orch, err := orchestrator.NewOrchestrator(rt, req.ProjectPath)
-	if err != nil {
+	// Use stored orchestrator
+	s.mu.Lock()
+	orch := s.orchestrator
+	s.mu.Unlock()
+
+	if orch == nil {
 		return &pb.StatusResponse{
-			Status: "error",
-			Error:  fmt.Sprintf("Failed to create orchestrator: %v", err),
+			Status: "stopped",
 		}, nil
 	}
+
 	envStatus, err := orch.Status(ctx, cfg)
 	if err != nil {
 		return &pb.StatusResponse{
@@ -238,7 +247,7 @@ func (s *server) Status(ctx context.Context, req *pb.StatusRequest) (*pb.StatusR
 
 func (s *server) Logs(req *pb.LogsRequest, stream pb.EngineService_LogsServer) error {
 	// Create Docker runtime
-	rt := dockerruntime.NewDockerRuntime()
+	rt := docker.NewDockerRuntime()
 	if err := rt.Connect(stream.Context()); err != nil {
 		return fmt.Errorf("docker not available: %w", err)
 	}
@@ -259,7 +268,7 @@ func (s *server) Logs(req *pb.LogsRequest, stream pb.EngineService_LogsServer) e
 	containerID := containers[0].ID
 
 	// Stream logs
-	reader, err := rt.StreamLogs(stream.Context(), containerID, engineruntime.LogOptions{
+	reader, err := rt.StreamLogs(stream.Context(), containerID, runtime.LogOptions{
 		Follow: req.Follow,
 		Tail:   int(req.Tail),
 		Since:  req.Since,
@@ -287,34 +296,105 @@ func (s *server) Logs(req *pb.LogsRequest, stream pb.EngineService_LogsServer) e
 }
 
 func (s *server) SnapshotSave(req *pb.SnapshotSaveRequest, stream pb.EngineService_SnapshotSaveServer) error {
-	stream.Send(&pb.StreamResponse{
-		Status:  "info",
-		Message: "Snapshot engine coming in Sprint 9-10",
-	})
-	stream.Send(&pb.StreamResponse{
-		Status: "done",
-		Done:   true,
-	})
-	return nil
+	parser := config.NewParser()
+	cfg, err := parser.Parse(req.ProjectPath)
+	if err != nil {
+		stream.Send(&pb.StreamResponse{Status: "error", Error: err.Error(), Done: true})
+		return nil
+	}
+
+	rt := docker.NewDockerRuntime()
+	if err := rt.Connect(stream.Context()); err != nil {
+		stream.Send(&pb.StreamResponse{Status: "error", Error: "Docker not available", Done: true})
+		return nil
+	}
+	defer rt.Close()
+
+	statusChan := make(chan string, 64)
+	done := make(chan error, 1)
+
+	go func() {
+		mgr := snapshot.NewManager(rt, req.ProjectPath)
+		_, err := mgr.Save(stream.Context(), cfg, req.Name, req.IncludeLogs, statusChan)
+		done <- err
+	}()
+
+	for {
+		select {
+		case msg := <-statusChan:
+			stream.Send(&pb.StreamResponse{Status: "info", Message: msg})
+		case err := <-done:
+			if err != nil {
+				stream.Send(&pb.StreamResponse{Status: "error", Error: err.Error(), Done: true})
+				return nil
+			}
+			stream.Send(&pb.StreamResponse{Status: "done", Done: true})
+			return nil
+		case <-stream.Context().Done():
+			return stream.Context().Err()
+		}
+	}
 }
 
 func (s *server) SnapshotLoad(req *pb.SnapshotLoadRequest, stream pb.EngineService_SnapshotLoadServer) error {
-	stream.Send(&pb.StreamResponse{
-		Status:  "info",
-		Message: "Snapshot engine coming in Sprint 9-10",
-	})
-	stream.Send(&pb.StreamResponse{
-		Status: "done",
-		Done:   true,
-	})
-	return nil
+	rt := docker.NewDockerRuntime()
+	if err := rt.Connect(stream.Context()); err != nil {
+		stream.Send(&pb.StreamResponse{Status: "error", Error: "Docker not available", Done: true})
+		return nil
+	}
+	defer rt.Close()
+
+	statusChan := make(chan string, 64)
+	done := make(chan error, 1)
+
+	go func() {
+		mgr := snapshot.NewManager(rt, req.ProjectPath)
+		err := mgr.Load(stream.Context(), req.SnapshotId, req.Force, statusChan)
+		done <- err
+	}()
+
+	for {
+		select {
+		case msg := <-statusChan:
+			stream.Send(&pb.StreamResponse{Status: "info", Message: msg})
+		case err := <-done:
+			if err != nil {
+				stream.Send(&pb.StreamResponse{Status: "error", Error: err.Error(), Done: true})
+				return nil
+			}
+			stream.Send(&pb.StreamResponse{Status: "done", Done: true})
+			return nil
+		case <-stream.Context().Done():
+			return stream.Context().Err()
+		}
+	}
 }
 
 func (s *server) SnapshotList(ctx context.Context, req *pb.SnapshotListRequest) (*pb.SnapshotListResponse, error) {
-	return &pb.SnapshotListResponse{}, nil
+	mgr := snapshot.NewManager(docker.NewDockerRuntime(), req.ProjectPath)
+	infos, err := mgr.List()
+	if err != nil {
+		return &pb.SnapshotListResponse{}, nil
+	}
+
+	var snapshots []*pb.Snapshot
+	for _, info := range infos {
+		snapshots = append(snapshots, &pb.Snapshot{
+			Id:         info.ID,
+			Name:       info.Name,
+			SizeBytes:  info.SizeBytes,
+			CreatedAt:  info.CreatedAt.Format(time.RFC3339),
+		})
+	}
+
+	return &pb.SnapshotListResponse{Snapshots: snapshots}, nil
 }
 
 func (s *server) SnapshotDelete(ctx context.Context, req *pb.SnapshotDeleteRequest) (*pb.StatusResponse, error) {
+	mgr := snapshot.NewManager(docker.NewDockerRuntime(), req.ProjectPath)
+	if err := mgr.Delete(req.SnapshotId); err != nil {
+		return &pb.StatusResponse{Status: "error", Error: err.Error()}, nil
+	}
 	return &pb.StatusResponse{Status: "ok"}, nil
 }
 
@@ -322,7 +402,7 @@ func (s *server) Doctor(ctx context.Context, req *pb.DoctorRequest) (*pb.DoctorR
 	var issues []*pb.DiagnosticIssue
 
 	// Check Docker
-	rt := dockerruntime.NewDockerRuntime()
+	rt := docker.NewDockerRuntime()
 	if err := rt.Connect(ctx); err != nil {
 		issues = append(issues, &pb.DiagnosticIssue{
 			Severity: "error",
@@ -365,26 +445,66 @@ func (s *server) Doctor(ctx context.Context, req *pb.DoctorRequest) (*pb.DoctorR
 }
 
 func (s *server) Reset(req *pb.ResetRequest, stream pb.EngineService_ResetServer) error {
-	stream.Send(&pb.StreamResponse{
-		Status:  "info",
-		Message: "Reset coming in Sprint 13-14",
-	})
-	stream.Send(&pb.StreamResponse{
-		Status: "done",
-		Done:   true,
-	})
-	return nil
+	parser := config.NewParser()
+	cfg, err := parser.Parse(req.ProjectPath)
+	if err != nil {
+		stream.Send(&pb.StreamResponse{Status: "error", Error: err.Error(), Done: true})
+		return nil
+	}
+
+	rt := docker.NewDockerRuntime()
+	if err := rt.Connect(stream.Context()); err != nil {
+		stream.Send(&pb.StreamResponse{Status: "error", Error: "Docker not available", Done: true})
+		return nil
+	}
+	defer rt.Close()
+
+	orch, err := orchestrator.NewOrchestrator(rt, req.ProjectPath, cfg)
+	if err != nil {
+		stream.Send(&pb.StreamResponse{Status: "error", Error: err.Error(), Done: true})
+		return nil
+	}
+
+	statusChan := make(chan string, 64)
+	done := make(chan error, 1)
+
+	go func() {
+		done <- orch.Stop(stream.Context(), cfg, 30, statusChan)
+	}()
+
+	for {
+		select {
+		case msg := <-statusChan:
+			stream.Send(&pb.StreamResponse{Status: "info", Message: msg})
+		case err := <-done:
+			if err != nil {
+				stream.Send(&pb.StreamResponse{Status: "error", Error: err.Error(), Done: true})
+				return nil
+			}
+			stream.Send(&pb.StreamResponse{Status: "info", Message: "Cleaning up..."})
+			err = orch.Start(stream.Context(), cfg, req.ProjectPath, statusChan)
+			if err != nil {
+				stream.Send(&pb.StreamResponse{Status: "error", Error: err.Error(), Done: true})
+				return nil
+			}
+			stream.Send(&pb.StreamResponse{Status: "done", Done: true})
+			return nil
+		case <-stream.Context().Done():
+			return stream.Context().Err()
+		}
+	}
 }
 
 func main() {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		log.Fatalf("Failed to get home directory: %v", err)
+	// Initialize platform-specific directories
+	configDir := platform.ConfigDir()
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		log.Fatalf("Failed to create config directory: %v", err)
 	}
 
-	devboxDir := filepath.Join(homeDir, ".devbox")
+	devboxDir := platform.DevBoxDir(".")
 	if err := os.MkdirAll(devboxDir, 0755); err != nil {
-		log.Fatalf("Failed to create %s: %v", devboxDir, err)
+		log.Fatalf("Failed to create devbox directory: %v", err)
 	}
 
 	// Initialize state manager
@@ -394,23 +514,24 @@ func main() {
 	}
 	defer stateMgr.Close()
 
-	// Determine socket path
-	socketPath := filepath.Join(devboxDir, "engine.sock")
-
+	// Platform-specific listener
 	var lis net.Listener
-	if os.PathSeparator == '\\' {
-		lis, err = net.Listen("tcp", "127.0.0.1:51000")
+	socketPath := platform.EngineSocketPath()
+
+	if platform.IsWindows() {
+		lis, err = net.Listen("tcp", "127.0.0.1:"+platform.DefaultEnginePort())
 		if err != nil {
 			log.Fatalf("Failed to listen on TCP: %v", err)
 		}
-		fmt.Printf("Engine listening on TCP 127.0.0.1:51000 (Windows mode)\n")
+		fmt.Printf("Engine listening on TCP 127.0.0.1:%s (Windows)\n", platform.DefaultEnginePort())
 	} else {
 		os.Remove(socketPath)
 		lis, err = net.Listen("unix", socketPath)
 		if err != nil {
 			log.Fatalf("Failed to listen on %s: %v", socketPath, err)
 		}
-		fmt.Printf("Engine listening on %s\n", socketPath)
+		defer os.Remove(socketPath)
+		fmt.Printf("Engine listening on %s (%s)\n", socketPath, platform.Detect())
 	}
 
 	s := grpc.NewServer()
@@ -422,12 +543,14 @@ func main() {
 
 	go func() {
 		sigCh := make(chan os.Signal, 1)
-		signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		if platform.IsWindows() {
+			signal.Notify(sigCh, os.Interrupt)
+		} else {
+			signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
+		}
 		<-sigCh
 		fmt.Println("\nShutting down engine daemon...")
 		s.GracefulStop()
-		os.Remove(socketPath)
-		os.Exit(0)
 	}()
 
 	fmt.Printf("DevBoxOS Engine v%s started\n", version)

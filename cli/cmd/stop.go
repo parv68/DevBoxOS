@@ -12,6 +12,10 @@ import (
 var stopCmd = &cobra.Command{
 	Use:   "stop [service]",
 	Short: "Stop all services or a specific service",
+	Long: `Stop running services in the DevBoxOS environment.
+
+If no service name is given, all services are stopped.
+Services are stopped in reverse-dependency order (dependents first).`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		dir, err := os.Getwd()
 		if err != nil {
