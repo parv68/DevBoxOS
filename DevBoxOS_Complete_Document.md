@@ -120,15 +120,70 @@ DevBoxOS is built on five non-negotiable principles:
 The primary interface for all developers. Designed to be minimal, memorable, and composable.
 
 ```bash
-devbox start          # Start all services defined in devbox.yml
-devbox stop           # Stop and clean up the environment
-devbox logs [service] # Stream logs from a service
-devbox reset          # Tear down and rebuild from config
-devbox snapshot save  # Capture current environment state
-devbox snapshot load  # Restore a saved environment state
-devbox share          # Generate a shareable environment package
-devbox status         # Show running services and health
-devbox doctor         # Diagnose and repair environment issues
+# Lifecycle
+devbox start                # Start all services defined in devbox.yml
+devbox stop                 # Stop and clean up the environment
+devbox reset                # Tear down and rebuild from config
+devbox restart              # Stop then start all services
+devbox destroy              # Full environment teardown
+devbox prune                # Clean up unused Docker resources
+
+# Monitoring & Diagnostics
+devbox status               # Show running services and health
+devbox ps                   # List running containers
+devbox logs [service]       # Stream logs from a service
+devbox top                  # Live resource usage dashboard
+devbox doctor               # Diagnose and repair environment issues
+devbox url                  # Show accessible URLs for services
+
+# Service Interaction
+devbox exec <service> <cmd> # Execute a command in a running service
+devbox shell <service>      # Interactive shell into a service container
+devbox env <service>        # Show environment variables with resolved secrets
+devbox cp <svc>:<path> <p>  # Copy files to/from containers
+devbox wait <service>       # Block until service is healthy
+
+# Configuration
+devbox init                 # Create new devbox.yml project
+devbox init --template      # Scaffold from a predefined template
+devbox init --from-git      # Clone repo + auto-detect + configure
+devbox validate             # Validate devbox.yml configuration
+devbox config get/set       # View/modify DevBoxOS configuration
+devbox compose-import       # Import docker-compose.yml
+devbox compose-export       # Export devbox.yml to docker-compose format
+
+# Build & Images
+devbox build [service]      # Build service images from Dockerfile
+devbox push [service]       # Push built images to a registry
+
+# Snapshots
+devbox snapshot save        # Capture current environment state
+devbox snapshot load        # Restore a saved environment state
+devbox snapshot list        # List available snapshots
+devbox snapshot delete      # Remove a snapshot
+devbox snapshot gc          # Garbage collect old snapshots
+
+# Secrets
+devbox secrets list         # List all secrets
+devbox secrets get <name>   # Retrieve a secret value
+devbox secrets add          # Add a new secret
+devbox secrets delete       # Remove a secret
+devbox secrets rotate       # Regenerate a secret
+
+# Visualization
+devbox graph                # Visualize the service dependency tree
+devbox env                  # Show all environment variables for a service
+
+# Utilities
+devbox version              # Show version information
+devbox completion           # Generate shell completion scripts
+devbox upgrade              # Upgrade DevBoxOS to the latest version
+
+# File Watching
+devbox start --watch        # Start with hot-reload on file changes
+
+# Multi-Project
+devbox start --project ...  # Run multiple projects with shared networking
 ```
 
 ### 4.2 Declarative Configuration
@@ -317,6 +372,237 @@ DevBoxOS supports a plugin system for community-contributed service templates, c
 - **Plugin registry:** Community plugins published to the DevBoxOS Hub, installable via `devbox plugin install <name>`
 - **Plugin sandboxing:** Plugins run with restricted permissions and cannot access host filesystem beyond the project directory
 - **API stability:** Plugin API follows semantic versioning. Breaking changes are announced 6 months in advance
+
+### 4.11 Additional Developer Productivity Features
+
+#### 4.11.1 `devbox url`
+
+Shows all accessible URLs for services with port mappings:
+
+```bash
+$ devbox url
+  web     → http://localhost:8080
+  api     → http://localhost:3000
+  grafana → http://localhost:3001
+```
+
+Useful for quickly opening services in the browser without remembering port numbers. Data is derived from the existing status/port mapping infrastructure.
+
+#### 4.11.2 `devbox env <service>`
+
+Dumps all environment variables (including resolved secrets) for a specific service:
+
+```bash
+$ devbox env web
+  NODE_ENV=development
+  DATABASE_URL=postgres://user:pass@db.local:5432/app
+  API_KEY=********
+  REDIS_URL=redis://redis.local:6379
+```
+
+Invaluable for debugging configuration issues. Secret values are masked by default with `--reveal` flag for explicit opt-in.
+
+#### 4.11.3 `devbox shell <service>`
+
+Opens an interactive shell inside a running service container:
+
+```bash
+$ devbox shell web
+  root@web:/app#
+```
+
+A thin wrapper around `docker exec -it <container> /bin/sh` (or `/bin/bash` if available). Falls back gracefully if neither shell exists in the container.
+
+#### 4.11.4 `devbox graph`
+
+Visualizes the service dependency tree in terminal-friendly ASCII:
+
+```bash
+$ devbox graph
+  web ─────────────────► api ────────────────► db
+                          │                      │
+                          └──► redis ◄───────────┘
+                                  │
+                                  └──► worker
+```
+
+Leverages the existing topological sort engine (`engine/internal/orchestrator/graph.go`) to render the dependency DAG. Useful for understanding service startup order and dependencies.
+
+#### 4.11.5 `devbox top`
+
+Real-time resource usage dashboard for running services:
+
+```
+  Service     CPU%    MEM     MEM%    NET RX    NET TX    BLOCK R    BLOCK W
+  ───────    ────    ───     ────    ──────    ──────    ───────    ───────
+  web        2.1%    48MB    2.4%    1.2MB     340KB     5.2MB      1.1MB
+  db         5.8%    256MB   12.8%   2.1MB     890KB     15.3MB     8.7MB
+  redis      0.9%    12MB    0.6%    450KB     120KB     890KB      230KB
+```
+
+The monitor package (`engine/internal/monitor`) already collects all this data — it just needs a CLI command to display it as a live TUI. Updates every 2 seconds by default.
+
+#### 4.11.6 `devbox init --template <name>`
+
+Scaffolds a complete project from a predefined template:
+
+```bash
+devbox init --template react-express-postgres
+# Creates: devbox.yml, Dockerfile, docker-compose.override.yml, .env template
+devbox init --template go-api
+# Creates: devbox.yml, Dockerfile, main.go, go.mod
+devbox init --template python-django
+# Creates: devbox.yml, Dockerfile, requirements.txt, manage.py skeleton
+```
+
+Built-in template library covers the most common stacks. Community templates published via the plugin system. Templates are versioned and can be extended with custom hooks.
+
+#### 4.11.7 `devbox wait <service>`
+
+Blocks until a service reports healthy, with configurable timeout:
+
+```bash
+devbox wait db --timeout 60s
+# Waiting for db to become healthy...
+# ✔ db is healthy (12.3s)
+
+devbox wait web db redis
+# Waiting for web, db, redis...
+# ✔ redis healthy (2.1s)
+# ✔ db healthy (8.7s)
+# ✔ web healthy (14.2s)
+```
+
+Uses the existing health check infrastructure. Essential for scripting and CI workflows where subsequent steps depend on service readiness.
+
+#### 4.11.8 `devbox cp <service>:<path> <local-path>`
+
+Copies files between service containers and the local filesystem:
+
+```bash
+# Copy from container to local
+devbox cp web:/app/logs/error.log ./error.log
+
+# Copy from local to container
+devbox cp ./config.json api:/app/config/production.json
+```
+
+Implemented via Docker's archive API (`CopyFromContainer`/`CopyToContainer` on the Docker runtime). Supports wildcards and recursive directory copy.
+
+#### 4.11.9 Hot Reload (Auto-Restart on File Changes)
+
+Watches project files with `fsnotify` and automatically rebuilds + restarts affected services:
+
+```bash
+devbox start --watch
+# Watching ./src for changes...
+# [14:32:01] Changed: src/api/handler.go → rebuilding api...
+# [14:32:05] api restarted (healthy in 3.2s)
+# [14:32:10] Changed: web/package.json → rebuilding web...
+```
+
+Configuration via `devbox.yml`:
+```yaml
+services:
+  api:
+    watch:
+      paths: ["./src"]
+      extensions: [".go", ".proto"]
+      events: [write, create]
+```
+
+#### 4.11.10 Multi-Project Orchestration
+
+Run multiple `devbox.yml` projects side by side with shared networking:
+
+```bash
+devbox start --project ../frontend --project ../backend
+# Projects share a virtual network, services discover each other by name
+devbox stop --all
+# Stops all projects
+```
+
+Each project retains its own lifecycle, but services can communicate across project boundaries via an optional shared overlay network. Useful for microservice architectures split across repositories.
+
+#### 4.11.11 `devbox snapshot gc`
+
+Garbage collects old snapshots based on configurable retention policies:
+
+```bash
+devbox snapshot gc --keep-last 5
+# Keeping: pre-deploy-v3, pre-deploy-v2, stable, backup-jan, backup-dec
+# Removed: pre-deploy-v1, debug-snapshot-1, debug-snapshot-2, temp-test (4 snapshots, 2.3GB freed)
+
+devbox snapshot gc --older-than 30d
+# Removed 12 snapshots older than 30 days (8.1GB freed)
+```
+
+Retention policies can be set globally or per-project in `devbox.yml`:
+```yaml
+snapshots:
+  retention:
+    max_count: 10
+    max_age_days: 90
+    min_free_space_gb: 5
+```
+
+#### 4.11.12 Docker Registry Push
+
+Push built images to a container registry:
+
+```bash
+devbox push web --tag myrepo/web:v1.2
+# Building web...
+# Tagging web as myrepo/web:v1.2...
+# Pushing to Docker Hub... done
+
+devbox push --all --tag myrepo/project:latest
+# Pushes all built services
+```
+
+Uses Docker's image tagging and push API. Supports authentication via `docker login` or `~/.docker/config.json`.
+
+#### 4.11.13 `devbox compose-export`
+
+Generates a `docker-compose.yml` from the current `devbox.yml` configuration:
+
+```bash
+devbox compose-export
+# Wrote docker-compose.yml (services: web, api, db)
+
+devbox compose-export --output docker-compose.override.yml
+```
+
+The reverse operation of `devbox compose-import`. Useful for interoperability with Docker-native tooling and CI pipelines that require standard Compose format.
+
+#### 4.11.14 `devbox init --from-git <repository>`
+
+Clones a remote repository and automatically sets up a devbox environment:
+
+```bash
+devbox init --from-git https://github.com/user/project.git
+# Cloning project...
+# Detecting stack: Node.js 20 + PostgreSQL
+# Creating devbox.yml...
+# ✔ Environment ready. Run 'devbox start' to begin.
+
+devbox init --from-git git@github.com:org/repo.git --branch develop
+```
+
+Auto-detects runtimes from project files (`package.json`, `go.mod`, `requirements.txt`, `Cargo.toml`, etc.) and generates an appropriate `devbox.yml`. Supports private repositories with SSH keys or GitHub CLI authentication.
+
+#### 4.11.15 `devbox tab-completion for service names`
+
+All CLI commands that accept service names (`logs`, `exec`, `shell`, `env`, `wait`, `cp`) provide dynamic tab completion:
+
+```bash
+devbox logs <TAB>
+# api      db        redis     web       worker
+devbox exec <TAB>
+# api      db        redis     web       worker
+```
+
+Implemented via cobra's `ValidArgsFunction` and the existing `ListContainers`/status data. Works in bash, zsh, and fish after running `devbox completion`.
 
 ---
 
@@ -1072,6 +1358,22 @@ Software development is one of the highest-leverage activities in the modern eco
 - Testing strategy (unit, integration, smoke, E2E, compatibility)
 - CI integration properly defined (`devbox ci` command)
 - Compliance roadmap (SOC 2 Type II, GDPR)
+- `devbox url` — show accessible URLs for services
+- `devbox env <service>` — dump environment variables with resolved secrets
+- `devbox shell <service>` — interactive container shell
+- `devbox graph` — visualize service dependency DAG
+- `devbox top` — live resource usage dashboard (CPU, memory, network, block I/O)
+- `devbox init --template <name>` — project scaffolding from templates
+- `devbox init --from-git <repo>` — clone + auto-detect + configure
+- `devbox wait <service>` — block until service healthy
+- `devbox cp` — copy files to/from service containers
+- Hot reload — auto-restart services on file changes (`--watch`)
+- Multi-project orchestration — run multiple devbox.yml projects together
+- `devbox snapshot gc` — garbage collect old snapshots with retention policies
+- `devbox push <service>` — push built images to Docker registry
+- `devbox compose-export` — export devbox.yml to docker-compose.yml
+- Dynamic tab completion for service names across all CLI commands
+- Full expansion of CLI reference with all 30+ commands
 
 **Business:**
 - Free tier: Added collaboration ceiling (1 share total)

@@ -8,18 +8,20 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"sync"
 	"syscall"
 	"time"
 
+	"github.com/devboxos/devboxos/engine/internal/orchestrator"
 	"github.com/devboxos/devboxos/engine/internal/state"
 	pb "github.com/devboxos/devboxos/engine/proto"
 	"github.com/devboxos/devboxos/shared/config"
 	"github.com/devboxos/devboxos/shared/platform"
 	"github.com/devboxos/devboxos/shared/runtime"
 	"github.com/devboxos/devboxos/shared/runtime/docker"
+	"github.com/devboxos/devboxos/shared/secrets"
 	"github.com/devboxos/devboxos/shared/snapshot"
-	"github.com/devboxos/devboxos/engine/internal/orchestrator"
 	"google.golang.org/grpc"
 )
 
@@ -493,6 +495,103 @@ func (s *server) Reset(req *pb.ResetRequest, stream pb.EngineService_ResetServer
 			return stream.Context().Err()
 		}
 	}
+}
+
+func getSecretStore(projectPath string) (*secrets.Store, *secrets.AgeCrypto, error) {
+	keyPath := filepath.Join(projectPath, ".devbox", "secrets.key")
+	storePath := filepath.Join(projectPath, ".devbox", "secrets.enc")
+
+	crypto, err := secrets.LoadOrCreateKey(keyPath)
+	if err != nil {
+		return nil, nil, fmt.Errorf("load age key: %w", err)
+	}
+
+	store := secrets.NewStore(crypto, storePath)
+	if err := store.Load(); err != nil {
+		return nil, nil, fmt.Errorf("load secret store: %w", err)
+	}
+
+	return store, crypto, nil
+}
+
+func (s *server) SecretSet(ctx context.Context, req *pb.SecretSetRequest) (*pb.StatusResponse, error) {
+	store, _, err := getSecretStore(req.ProjectPath)
+	if err != nil {
+		return &pb.StatusResponse{Status: "error", Error: err.Error()}, nil
+	}
+
+	if err := store.Set(req.Name, req.Value, "manual"); err != nil {
+		return &pb.StatusResponse{Status: "error", Error: err.Error()}, nil
+	}
+
+	return &pb.StatusResponse{Status: "ok"}, nil
+}
+
+func (s *server) SecretGet(ctx context.Context, req *pb.SecretGetRequest) (*pb.SecretGetResponse, error) {
+	store, _, err := getSecretStore(req.ProjectPath)
+	if err != nil {
+		return &pb.SecretGetResponse{Error: err.Error()}, nil
+	}
+
+	entry, err := store.Get(req.Name)
+	if err != nil {
+		return &pb.SecretGetResponse{Error: err.Error()}, nil
+	}
+
+	return &pb.SecretGetResponse{
+		Name:  entry.Name,
+		Value: entry.Value,
+	}, nil
+}
+
+func (s *server) SecretList(ctx context.Context, req *pb.SecretListRequest) (*pb.SecretListResponse, error) {
+	store, _, err := getSecretStore(req.ProjectPath)
+	if err != nil {
+		return &pb.SecretListResponse{Error: err.Error()}, nil
+	}
+
+	entries := store.List()
+	var pbEntries []*pb.SecretEntry
+	for _, e := range entries {
+		pbEntries = append(pbEntries, &pb.SecretEntry{
+			Name:      e.Name,
+			Source:    e.Source,
+			CreatedAt: e.CreatedAt.Format(time.RFC3339),
+			UpdatedAt: e.UpdatedAt.Format(time.RFC3339),
+		})
+	}
+
+	return &pb.SecretListResponse{Secrets: pbEntries}, nil
+}
+
+func (s *server) SecretDelete(ctx context.Context, req *pb.SecretDeleteRequest) (*pb.StatusResponse, error) {
+	store, _, err := getSecretStore(req.ProjectPath)
+	if err != nil {
+		return &pb.StatusResponse{Status: "error", Error: err.Error()}, nil
+	}
+
+	if err := store.Delete(req.Name); err != nil {
+		return &pb.StatusResponse{Status: "error", Error: err.Error()}, nil
+	}
+
+	return &pb.StatusResponse{Status: "ok"}, nil
+}
+
+func (s *server) SecretRotate(ctx context.Context, req *pb.SecretRotateRequest) (*pb.StatusResponse, error) {
+	projectPath := req.ProjectPath
+	keyPath := filepath.Join(projectPath, ".devbox", "secrets.key")
+	storePath := filepath.Join(projectPath, ".devbox", "secrets.enc")
+
+	resolver, err := secrets.NewResolver(projectPath, keyPath, storePath)
+	if err != nil {
+		return &pb.StatusResponse{Status: "error", Error: err.Error()}, nil
+	}
+
+	if err := resolver.Rotate(req.Name); err != nil {
+		return &pb.StatusResponse{Status: "error", Error: err.Error()}, nil
+	}
+
+	return &pb.StatusResponse{Status: "ok"}, nil
 }
 
 func main() {

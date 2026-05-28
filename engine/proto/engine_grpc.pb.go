@@ -30,6 +30,11 @@ const (
 	EngineService_Doctor_FullMethodName         = "/engine.EngineService/Doctor"
 	EngineService_Reset_FullMethodName          = "/engine.EngineService/Reset"
 	EngineService_Ping_FullMethodName           = "/engine.EngineService/Ping"
+	EngineService_SecretSet_FullMethodName      = "/engine.EngineService/SecretSet"
+	EngineService_SecretGet_FullMethodName      = "/engine.EngineService/SecretGet"
+	EngineService_SecretList_FullMethodName     = "/engine.EngineService/SecretList"
+	EngineService_SecretDelete_FullMethodName   = "/engine.EngineService/SecretDelete"
+	EngineService_SecretRotate_FullMethodName   = "/engine.EngineService/SecretRotate"
 )
 
 // EngineServiceClient is the client API for EngineService service.
@@ -47,6 +52,11 @@ type EngineServiceClient interface {
 	Doctor(ctx context.Context, in *DoctorRequest, opts ...grpc.CallOption) (*DoctorResponse, error)
 	Reset(ctx context.Context, in *ResetRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamResponse], error)
 	Ping(ctx context.Context, in *PingRequest, opts ...grpc.CallOption) (*PingResponse, error)
+	SecretSet(ctx context.Context, in *SecretSetRequest, opts ...grpc.CallOption) (*StatusResponse, error)
+	SecretGet(ctx context.Context, in *SecretGetRequest, opts ...grpc.CallOption) (*SecretGetResponse, error)
+	SecretList(ctx context.Context, in *SecretListRequest, opts ...grpc.CallOption) (*SecretListResponse, error)
+	SecretDelete(ctx context.Context, in *SecretDeleteRequest, opts ...grpc.CallOption) (*StatusResponse, error)
+	SecretRotate(ctx context.Context, in *SecretRotateRequest, opts ...grpc.CallOption) (*StatusResponse, error)
 }
 
 type engineServiceClient struct {
@@ -212,6 +222,56 @@ func (c *engineServiceClient) Ping(ctx context.Context, in *PingRequest, opts ..
 	return out, nil
 }
 
+func (c *engineServiceClient) SecretSet(ctx context.Context, in *SecretSetRequest, opts ...grpc.CallOption) (*StatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StatusResponse)
+	err := c.cc.Invoke(ctx, EngineService_SecretSet_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *engineServiceClient) SecretGet(ctx context.Context, in *SecretGetRequest, opts ...grpc.CallOption) (*SecretGetResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SecretGetResponse)
+	err := c.cc.Invoke(ctx, EngineService_SecretGet_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *engineServiceClient) SecretList(ctx context.Context, in *SecretListRequest, opts ...grpc.CallOption) (*SecretListResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SecretListResponse)
+	err := c.cc.Invoke(ctx, EngineService_SecretList_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *engineServiceClient) SecretDelete(ctx context.Context, in *SecretDeleteRequest, opts ...grpc.CallOption) (*StatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StatusResponse)
+	err := c.cc.Invoke(ctx, EngineService_SecretDelete_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *engineServiceClient) SecretRotate(ctx context.Context, in *SecretRotateRequest, opts ...grpc.CallOption) (*StatusResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(StatusResponse)
+	err := c.cc.Invoke(ctx, EngineService_SecretRotate_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // EngineServiceServer is the server API for EngineService service.
 // All implementations must embed UnimplementedEngineServiceServer
 // for forward compatibility.
@@ -227,6 +287,11 @@ type EngineServiceServer interface {
 	Doctor(context.Context, *DoctorRequest) (*DoctorResponse, error)
 	Reset(*ResetRequest, grpc.ServerStreamingServer[StreamResponse]) error
 	Ping(context.Context, *PingRequest) (*PingResponse, error)
+	SecretSet(context.Context, *SecretSetRequest) (*StatusResponse, error)
+	SecretGet(context.Context, *SecretGetRequest) (*SecretGetResponse, error)
+	SecretList(context.Context, *SecretListRequest) (*SecretListResponse, error)
+	SecretDelete(context.Context, *SecretDeleteRequest) (*StatusResponse, error)
+	SecretRotate(context.Context, *SecretRotateRequest) (*StatusResponse, error)
 	mustEmbedUnimplementedEngineServiceServer()
 }
 
@@ -269,6 +334,21 @@ func (UnimplementedEngineServiceServer) Reset(*ResetRequest, grpc.ServerStreamin
 }
 func (UnimplementedEngineServiceServer) Ping(context.Context, *PingRequest) (*PingResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Ping not implemented")
+}
+func (UnimplementedEngineServiceServer) SecretSet(context.Context, *SecretSetRequest) (*StatusResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SecretSet not implemented")
+}
+func (UnimplementedEngineServiceServer) SecretGet(context.Context, *SecretGetRequest) (*SecretGetResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SecretGet not implemented")
+}
+func (UnimplementedEngineServiceServer) SecretList(context.Context, *SecretListRequest) (*SecretListResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SecretList not implemented")
+}
+func (UnimplementedEngineServiceServer) SecretDelete(context.Context, *SecretDeleteRequest) (*StatusResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SecretDelete not implemented")
+}
+func (UnimplementedEngineServiceServer) SecretRotate(context.Context, *SecretRotateRequest) (*StatusResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SecretRotate not implemented")
 }
 func (UnimplementedEngineServiceServer) mustEmbedUnimplementedEngineServiceServer() {}
 func (UnimplementedEngineServiceServer) testEmbeddedByValue()                       {}
@@ -454,6 +534,96 @@ func _EngineService_Ping_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EngineService_SecretSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SecretSetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EngineServiceServer).SecretSet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: EngineService_SecretSet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EngineServiceServer).SecretSet(ctx, req.(*SecretSetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _EngineService_SecretGet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SecretGetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EngineServiceServer).SecretGet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: EngineService_SecretGet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EngineServiceServer).SecretGet(ctx, req.(*SecretGetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _EngineService_SecretList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SecretListRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EngineServiceServer).SecretList(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: EngineService_SecretList_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EngineServiceServer).SecretList(ctx, req.(*SecretListRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _EngineService_SecretDelete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SecretDeleteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EngineServiceServer).SecretDelete(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: EngineService_SecretDelete_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EngineServiceServer).SecretDelete(ctx, req.(*SecretDeleteRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _EngineService_SecretRotate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SecretRotateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EngineServiceServer).SecretRotate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: EngineService_SecretRotate_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EngineServiceServer).SecretRotate(ctx, req.(*SecretRotateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // EngineService_ServiceDesc is the grpc.ServiceDesc for EngineService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -484,6 +654,26 @@ var EngineService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Ping",
 			Handler:    _EngineService_Ping_Handler,
+		},
+		{
+			MethodName: "SecretSet",
+			Handler:    _EngineService_SecretSet_Handler,
+		},
+		{
+			MethodName: "SecretGet",
+			Handler:    _EngineService_SecretGet_Handler,
+		},
+		{
+			MethodName: "SecretList",
+			Handler:    _EngineService_SecretList_Handler,
+		},
+		{
+			MethodName: "SecretDelete",
+			Handler:    _EngineService_SecretDelete_Handler,
+		},
+		{
+			MethodName: "SecretRotate",
+			Handler:    _EngineService_SecretRotate_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

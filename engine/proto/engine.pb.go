@@ -1205,6 +1205,446 @@ func (x *ResetRequest) GetForce() bool {
 	return false
 }
 
+type SecretSetRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ProjectPath   string                 `protobuf:"bytes,1,opt,name=project_path,json=projectPath,proto3" json:"project_path,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Value         string                 `protobuf:"bytes,3,opt,name=value,proto3" json:"value,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SecretSetRequest) Reset() {
+	*x = SecretSetRequest{}
+	mi := &file_proto_engine_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SecretSetRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SecretSetRequest) ProtoMessage() {}
+
+func (x *SecretSetRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_engine_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SecretSetRequest.ProtoReflect.Descriptor instead.
+func (*SecretSetRequest) Descriptor() ([]byte, []int) {
+	return file_proto_engine_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *SecretSetRequest) GetProjectPath() string {
+	if x != nil {
+		return x.ProjectPath
+	}
+	return ""
+}
+
+func (x *SecretSetRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *SecretSetRequest) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+type SecretGetRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ProjectPath   string                 `protobuf:"bytes,1,opt,name=project_path,json=projectPath,proto3" json:"project_path,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SecretGetRequest) Reset() {
+	*x = SecretGetRequest{}
+	mi := &file_proto_engine_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SecretGetRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SecretGetRequest) ProtoMessage() {}
+
+func (x *SecretGetRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_engine_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SecretGetRequest.ProtoReflect.Descriptor instead.
+func (*SecretGetRequest) Descriptor() ([]byte, []int) {
+	return file_proto_engine_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *SecretGetRequest) GetProjectPath() string {
+	if x != nil {
+		return x.ProjectPath
+	}
+	return ""
+}
+
+func (x *SecretGetRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+type SecretGetResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Value         string                 `protobuf:"bytes,2,opt,name=value,proto3" json:"value,omitempty"`
+	Error         string                 `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SecretGetResponse) Reset() {
+	*x = SecretGetResponse{}
+	mi := &file_proto_engine_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SecretGetResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SecretGetResponse) ProtoMessage() {}
+
+func (x *SecretGetResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_engine_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SecretGetResponse.ProtoReflect.Descriptor instead.
+func (*SecretGetResponse) Descriptor() ([]byte, []int) {
+	return file_proto_engine_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *SecretGetResponse) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *SecretGetResponse) GetValue() string {
+	if x != nil {
+		return x.Value
+	}
+	return ""
+}
+
+func (x *SecretGetResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type SecretListRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ProjectPath   string                 `protobuf:"bytes,1,opt,name=project_path,json=projectPath,proto3" json:"project_path,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SecretListRequest) Reset() {
+	*x = SecretListRequest{}
+	mi := &file_proto_engine_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SecretListRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SecretListRequest) ProtoMessage() {}
+
+func (x *SecretListRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_engine_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SecretListRequest.ProtoReflect.Descriptor instead.
+func (*SecretListRequest) Descriptor() ([]byte, []int) {
+	return file_proto_engine_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *SecretListRequest) GetProjectPath() string {
+	if x != nil {
+		return x.ProjectPath
+	}
+	return ""
+}
+
+type SecretListResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Secrets       []*SecretEntry         `protobuf:"bytes,1,rep,name=secrets,proto3" json:"secrets,omitempty"`
+	Error         string                 `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SecretListResponse) Reset() {
+	*x = SecretListResponse{}
+	mi := &file_proto_engine_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SecretListResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SecretListResponse) ProtoMessage() {}
+
+func (x *SecretListResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_engine_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SecretListResponse.ProtoReflect.Descriptor instead.
+func (*SecretListResponse) Descriptor() ([]byte, []int) {
+	return file_proto_engine_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *SecretListResponse) GetSecrets() []*SecretEntry {
+	if x != nil {
+		return x.Secrets
+	}
+	return nil
+}
+
+func (x *SecretListResponse) GetError() string {
+	if x != nil {
+		return x.Error
+	}
+	return ""
+}
+
+type SecretEntry struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Source        string                 `protobuf:"bytes,2,opt,name=source,proto3" json:"source,omitempty"`
+	CreatedAt     string                 `protobuf:"bytes,3,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt     string                 `protobuf:"bytes,4,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SecretEntry) Reset() {
+	*x = SecretEntry{}
+	mi := &file_proto_engine_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SecretEntry) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SecretEntry) ProtoMessage() {}
+
+func (x *SecretEntry) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_engine_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SecretEntry.ProtoReflect.Descriptor instead.
+func (*SecretEntry) Descriptor() ([]byte, []int) {
+	return file_proto_engine_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *SecretEntry) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *SecretEntry) GetSource() string {
+	if x != nil {
+		return x.Source
+	}
+	return ""
+}
+
+func (x *SecretEntry) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+func (x *SecretEntry) GetUpdatedAt() string {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return ""
+}
+
+type SecretDeleteRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ProjectPath   string                 `protobuf:"bytes,1,opt,name=project_path,json=projectPath,proto3" json:"project_path,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SecretDeleteRequest) Reset() {
+	*x = SecretDeleteRequest{}
+	mi := &file_proto_engine_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SecretDeleteRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SecretDeleteRequest) ProtoMessage() {}
+
+func (x *SecretDeleteRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_engine_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SecretDeleteRequest.ProtoReflect.Descriptor instead.
+func (*SecretDeleteRequest) Descriptor() ([]byte, []int) {
+	return file_proto_engine_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *SecretDeleteRequest) GetProjectPath() string {
+	if x != nil {
+		return x.ProjectPath
+	}
+	return ""
+}
+
+func (x *SecretDeleteRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+type SecretRotateRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ProjectPath   string                 `protobuf:"bytes,1,opt,name=project_path,json=projectPath,proto3" json:"project_path,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SecretRotateRequest) Reset() {
+	*x = SecretRotateRequest{}
+	mi := &file_proto_engine_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SecretRotateRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SecretRotateRequest) ProtoMessage() {}
+
+func (x *SecretRotateRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_engine_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SecretRotateRequest.ProtoReflect.Descriptor instead.
+func (*SecretRotateRequest) Descriptor() ([]byte, []int) {
+	return file_proto_engine_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *SecretRotateRequest) GetProjectPath() string {
+	if x != nil {
+		return x.ProjectPath
+	}
+	return ""
+}
+
+func (x *SecretRotateRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
 var File_proto_engine_proto protoreflect.FileDescriptor
 
 const file_proto_engine_proto_rawDesc = "" +
@@ -1292,7 +1732,36 @@ const file_proto_engine_proto_rawDesc = "" +
 	"\adetails\x18\x04 \x01(\tR\adetails\"G\n" +
 	"\fResetRequest\x12!\n" +
 	"\fproject_path\x18\x01 \x01(\tR\vprojectPath\x12\x14\n" +
-	"\x05force\x18\x02 \x01(\bR\x05force2\xae\x05\n" +
+	"\x05force\x18\x02 \x01(\bR\x05force\"_\n" +
+	"\x10SecretSetRequest\x12!\n" +
+	"\fproject_path\x18\x01 \x01(\tR\vprojectPath\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x14\n" +
+	"\x05value\x18\x03 \x01(\tR\x05value\"I\n" +
+	"\x10SecretGetRequest\x12!\n" +
+	"\fproject_path\x18\x01 \x01(\tR\vprojectPath\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"S\n" +
+	"\x11SecretGetResponse\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value\x12\x14\n" +
+	"\x05error\x18\x03 \x01(\tR\x05error\"6\n" +
+	"\x11SecretListRequest\x12!\n" +
+	"\fproject_path\x18\x01 \x01(\tR\vprojectPath\"Y\n" +
+	"\x12SecretListResponse\x12-\n" +
+	"\asecrets\x18\x01 \x03(\v2\x13.engine.SecretEntryR\asecrets\x12\x14\n" +
+	"\x05error\x18\x02 \x01(\tR\x05error\"w\n" +
+	"\vSecretEntry\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x16\n" +
+	"\x06source\x18\x02 \x01(\tR\x06source\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x03 \x01(\tR\tcreatedAt\x12\x1d\n" +
+	"\n" +
+	"updated_at\x18\x04 \x01(\tR\tupdatedAt\"L\n" +
+	"\x13SecretDeleteRequest\x12!\n" +
+	"\fproject_path\x18\x01 \x01(\tR\vprojectPath\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\"L\n" +
+	"\x13SecretRotateRequest\x12!\n" +
+	"\fproject_path\x18\x01 \x01(\tR\vprojectPath\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name2\xfe\a\n" +
 	"\rEngineService\x127\n" +
 	"\x05Start\x12\x14.engine.StartRequest\x1a\x16.engine.StreamResponse0\x01\x123\n" +
 	"\x04Stop\x12\x13.engine.StopRequest\x1a\x16.engine.StatusResponse\x127\n" +
@@ -1304,7 +1773,13 @@ const file_proto_engine_proto_rawDesc = "" +
 	"\x0eSnapshotDelete\x12\x1d.engine.SnapshotDeleteRequest\x1a\x16.engine.StatusResponse\x127\n" +
 	"\x06Doctor\x12\x15.engine.DoctorRequest\x1a\x16.engine.DoctorResponse\x127\n" +
 	"\x05Reset\x12\x14.engine.ResetRequest\x1a\x16.engine.StreamResponse0\x01\x121\n" +
-	"\x04Ping\x12\x13.engine.PingRequest\x1a\x14.engine.PingResponseB4Z2github.com/devboxos/devboxos/engine/proto;enginepbb\x06proto3"
+	"\x04Ping\x12\x13.engine.PingRequest\x1a\x14.engine.PingResponse\x12=\n" +
+	"\tSecretSet\x12\x18.engine.SecretSetRequest\x1a\x16.engine.StatusResponse\x12@\n" +
+	"\tSecretGet\x12\x18.engine.SecretGetRequest\x1a\x19.engine.SecretGetResponse\x12C\n" +
+	"\n" +
+	"SecretList\x12\x19.engine.SecretListRequest\x1a\x1a.engine.SecretListResponse\x12C\n" +
+	"\fSecretDelete\x12\x1b.engine.SecretDeleteRequest\x1a\x16.engine.StatusResponse\x12C\n" +
+	"\fSecretRotate\x12\x1b.engine.SecretRotateRequest\x1a\x16.engine.StatusResponseB4Z2github.com/devboxos/devboxos/engine/proto;enginepbb\x06proto3"
 
 var (
 	file_proto_engine_proto_rawDescOnce sync.Once
@@ -1318,7 +1793,7 @@ func file_proto_engine_proto_rawDescGZIP() []byte {
 	return file_proto_engine_proto_rawDescData
 }
 
-var file_proto_engine_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_proto_engine_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
 var file_proto_engine_proto_goTypes = []any{
 	(*PingRequest)(nil),           // 0: engine.PingRequest
 	(*PingResponse)(nil),          // 1: engine.PingResponse
@@ -1340,38 +1815,57 @@ var file_proto_engine_proto_goTypes = []any{
 	(*DoctorResponse)(nil),        // 17: engine.DoctorResponse
 	(*DiagnosticIssue)(nil),       // 18: engine.DiagnosticIssue
 	(*ResetRequest)(nil),          // 19: engine.ResetRequest
+	(*SecretSetRequest)(nil),      // 20: engine.SecretSetRequest
+	(*SecretGetRequest)(nil),      // 21: engine.SecretGetRequest
+	(*SecretGetResponse)(nil),     // 22: engine.SecretGetResponse
+	(*SecretListRequest)(nil),     // 23: engine.SecretListRequest
+	(*SecretListResponse)(nil),    // 24: engine.SecretListResponse
+	(*SecretEntry)(nil),           // 25: engine.SecretEntry
+	(*SecretDeleteRequest)(nil),   // 26: engine.SecretDeleteRequest
+	(*SecretRotateRequest)(nil),   // 27: engine.SecretRotateRequest
 }
 var file_proto_engine_proto_depIdxs = []int32{
 	8,  // 0: engine.StatusResponse.services:type_name -> engine.ServiceStatus
 	14, // 1: engine.SnapshotListResponse.snapshots:type_name -> engine.Snapshot
 	18, // 2: engine.DoctorResponse.issues:type_name -> engine.DiagnosticIssue
-	2,  // 3: engine.EngineService.Start:input_type -> engine.StartRequest
-	3,  // 4: engine.EngineService.Stop:input_type -> engine.StopRequest
-	4,  // 5: engine.EngineService.Status:input_type -> engine.StatusRequest
-	5,  // 6: engine.EngineService.Logs:input_type -> engine.LogsRequest
-	10, // 7: engine.EngineService.SnapshotSave:input_type -> engine.SnapshotSaveRequest
-	11, // 8: engine.EngineService.SnapshotLoad:input_type -> engine.SnapshotLoadRequest
-	12, // 9: engine.EngineService.SnapshotList:input_type -> engine.SnapshotListRequest
-	15, // 10: engine.EngineService.SnapshotDelete:input_type -> engine.SnapshotDeleteRequest
-	16, // 11: engine.EngineService.Doctor:input_type -> engine.DoctorRequest
-	19, // 12: engine.EngineService.Reset:input_type -> engine.ResetRequest
-	0,  // 13: engine.EngineService.Ping:input_type -> engine.PingRequest
-	9,  // 14: engine.EngineService.Start:output_type -> engine.StreamResponse
-	7,  // 15: engine.EngineService.Stop:output_type -> engine.StatusResponse
-	7,  // 16: engine.EngineService.Status:output_type -> engine.StatusResponse
-	6,  // 17: engine.EngineService.Logs:output_type -> engine.LogEntry
-	9,  // 18: engine.EngineService.SnapshotSave:output_type -> engine.StreamResponse
-	9,  // 19: engine.EngineService.SnapshotLoad:output_type -> engine.StreamResponse
-	13, // 20: engine.EngineService.SnapshotList:output_type -> engine.SnapshotListResponse
-	7,  // 21: engine.EngineService.SnapshotDelete:output_type -> engine.StatusResponse
-	17, // 22: engine.EngineService.Doctor:output_type -> engine.DoctorResponse
-	9,  // 23: engine.EngineService.Reset:output_type -> engine.StreamResponse
-	1,  // 24: engine.EngineService.Ping:output_type -> engine.PingResponse
-	14, // [14:25] is the sub-list for method output_type
-	3,  // [3:14] is the sub-list for method input_type
-	3,  // [3:3] is the sub-list for extension type_name
-	3,  // [3:3] is the sub-list for extension extendee
-	0,  // [0:3] is the sub-list for field type_name
+	25, // 3: engine.SecretListResponse.secrets:type_name -> engine.SecretEntry
+	2,  // 4: engine.EngineService.Start:input_type -> engine.StartRequest
+	3,  // 5: engine.EngineService.Stop:input_type -> engine.StopRequest
+	4,  // 6: engine.EngineService.Status:input_type -> engine.StatusRequest
+	5,  // 7: engine.EngineService.Logs:input_type -> engine.LogsRequest
+	10, // 8: engine.EngineService.SnapshotSave:input_type -> engine.SnapshotSaveRequest
+	11, // 9: engine.EngineService.SnapshotLoad:input_type -> engine.SnapshotLoadRequest
+	12, // 10: engine.EngineService.SnapshotList:input_type -> engine.SnapshotListRequest
+	15, // 11: engine.EngineService.SnapshotDelete:input_type -> engine.SnapshotDeleteRequest
+	16, // 12: engine.EngineService.Doctor:input_type -> engine.DoctorRequest
+	19, // 13: engine.EngineService.Reset:input_type -> engine.ResetRequest
+	0,  // 14: engine.EngineService.Ping:input_type -> engine.PingRequest
+	20, // 15: engine.EngineService.SecretSet:input_type -> engine.SecretSetRequest
+	21, // 16: engine.EngineService.SecretGet:input_type -> engine.SecretGetRequest
+	23, // 17: engine.EngineService.SecretList:input_type -> engine.SecretListRequest
+	26, // 18: engine.EngineService.SecretDelete:input_type -> engine.SecretDeleteRequest
+	27, // 19: engine.EngineService.SecretRotate:input_type -> engine.SecretRotateRequest
+	9,  // 20: engine.EngineService.Start:output_type -> engine.StreamResponse
+	7,  // 21: engine.EngineService.Stop:output_type -> engine.StatusResponse
+	7,  // 22: engine.EngineService.Status:output_type -> engine.StatusResponse
+	6,  // 23: engine.EngineService.Logs:output_type -> engine.LogEntry
+	9,  // 24: engine.EngineService.SnapshotSave:output_type -> engine.StreamResponse
+	9,  // 25: engine.EngineService.SnapshotLoad:output_type -> engine.StreamResponse
+	13, // 26: engine.EngineService.SnapshotList:output_type -> engine.SnapshotListResponse
+	7,  // 27: engine.EngineService.SnapshotDelete:output_type -> engine.StatusResponse
+	17, // 28: engine.EngineService.Doctor:output_type -> engine.DoctorResponse
+	9,  // 29: engine.EngineService.Reset:output_type -> engine.StreamResponse
+	1,  // 30: engine.EngineService.Ping:output_type -> engine.PingResponse
+	7,  // 31: engine.EngineService.SecretSet:output_type -> engine.StatusResponse
+	22, // 32: engine.EngineService.SecretGet:output_type -> engine.SecretGetResponse
+	24, // 33: engine.EngineService.SecretList:output_type -> engine.SecretListResponse
+	7,  // 34: engine.EngineService.SecretDelete:output_type -> engine.StatusResponse
+	7,  // 35: engine.EngineService.SecretRotate:output_type -> engine.StatusResponse
+	20, // [20:36] is the sub-list for method output_type
+	4,  // [4:20] is the sub-list for method input_type
+	4,  // [4:4] is the sub-list for extension type_name
+	4,  // [4:4] is the sub-list for extension extendee
+	0,  // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_proto_engine_proto_init() }
@@ -1385,7 +1879,7 @@ func file_proto_engine_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_engine_proto_rawDesc), len(file_proto_engine_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   20,
+			NumMessages:   28,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

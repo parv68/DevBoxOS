@@ -95,7 +95,11 @@ func configToMap(cfg *types.Config) map[string]interface{} {
 	result["version"] = cfg.Version
 
 	if len(cfg.Runtimes) > 0 {
-		result["runtimes"] = cfg.Runtimes
+		rtMap := make(map[string]interface{})
+		for k, v := range cfg.Runtimes {
+			rtMap[k] = v
+		}
+		result["runtimes"] = rtMap
 	}
 
 	services := make(map[string]interface{})
@@ -119,7 +123,11 @@ func configToMap(cfg *types.Config) map[string]interface{} {
 			svcMap["command"] = svc.Command
 		}
 		if len(svc.Args) > 0 {
-			svcMap["args"] = svc.Args
+			argList := make([]interface{}, len(svc.Args))
+			for i, v := range svc.Args {
+				argList[i] = v
+			}
+			svcMap["args"] = argList
 		}
 		if svc.WorkingDir != "" {
 			svcMap["working_dir"] = svc.WorkingDir
@@ -128,16 +136,28 @@ func configToMap(cfg *types.Config) map[string]interface{} {
 			svcMap["port"] = svc.Port
 		}
 		if len(svc.Ports) > 0 {
-			svcMap["ports"] = svc.Ports
+			portList := make([]interface{}, len(svc.Ports))
+			for i, v := range svc.Ports {
+				portList[i] = v
+			}
+			svcMap["ports"] = portList
 		}
 		if svc.Protocol != "" {
 			svcMap["protocol"] = svc.Protocol
 		}
 		if len(svc.DependsOn) > 0 {
-			svcMap["depends_on"] = svc.DependsOn
+			depList := make([]interface{}, len(svc.DependsOn))
+			for i, v := range svc.DependsOn {
+				depList[i] = v
+			}
+			svcMap["depends_on"] = depList
 		}
 		if len(svc.Env) > 0 {
-			svcMap["env"] = svc.Env
+			envMap := make(map[string]interface{})
+			for k, v := range svc.Env {
+				envMap[k] = v
+			}
+			svcMap["env"] = envMap
 		}
 		if svc.EnvFile != "" {
 			svcMap["env_file"] = svc.EnvFile
@@ -146,7 +166,11 @@ func configToMap(cfg *types.Config) map[string]interface{} {
 			svcMap["data"] = svc.Data
 		}
 		if len(svc.Volumes) > 0 {
-			svcMap["volumes"] = svc.Volumes
+			volList := make([]interface{}, len(svc.Volumes))
+			for i, v := range svc.Volumes {
+				volList[i] = v
+			}
+			svcMap["volumes"] = volList
 		}
 		if svc.Healthcheck != nil {
 			hcMap := make(map[string]interface{})
@@ -206,7 +230,11 @@ func configToMap(cfg *types.Config) map[string]interface{} {
 			secMap := make(map[string]interface{})
 			secMap["tls"] = svc.Security.TLS
 			if len(svc.Security.Capabilities) > 0 {
-				secMap["capabilities"] = svc.Security.Capabilities
+				capList := make([]interface{}, len(svc.Security.Capabilities))
+				for i, v := range svc.Security.Capabilities {
+					capList[i] = v
+				}
+				secMap["capabilities"] = capList
 			}
 			secMap["read_only"] = svc.Security.ReadOnly
 			svcMap["security"] = secMap

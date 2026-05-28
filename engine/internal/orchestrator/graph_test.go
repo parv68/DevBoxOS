@@ -149,21 +149,24 @@ func TestGraph_Empty(t *testing.T) {
 }
 
 func TestGraph_Deterministic(t *testing.T) {
-	// Two runs with same nodes should produce same order
+	// Two runs with same chained nodes should produce same order
 	g1 := NewGraph()
-	g1.AddNode("web", []string{"db"})
+	g1.AddNode("web", []string{"api"})
+	g1.AddNode("api", []string{"db"})
 	g1.AddNode("db", nil)
-	g1.AddNode("cache", nil)
 
 	g2 := NewGraph()
-	g2.AddNode("web", []string{"db"})
+	g2.AddNode("web", []string{"api"})
+	g2.AddNode("api", []string{"db"})
 	g2.AddNode("db", nil)
-	g2.AddNode("cache", nil)
 
 	r1, _ := g1.Resolve()
 	r2, _ := g2.Resolve()
 
 	if !reflect.DeepEqual(r1, r2) {
 		t.Errorf("results differ between runs: %v vs %v", r1, r2)
+	}
+	if len(r1) != 3 || r1[0] != "db" || r1[2] != "web" {
+		t.Errorf("unexpected order: %v", r1)
 	}
 }

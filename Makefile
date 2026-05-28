@@ -1,60 +1,48 @@
-# DevBoxOS Makefile
+.PHONY: all build test test-race test-integration clean lint vet fmt
 
-VERSION ?= 0.1.0-dev
-COMMIT ?= $(shell git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-DATE ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
+GO ?= go
+GOFLAGS ?= -mod=mod
+TAGS ?=
 
-LDFLAGS := -ldflags "-X github.com/devboxos/devboxos/cli/cmd.version=$(VERSION) -X github.com/devboxos/devboxos/cli/cmd.commit=$(COMMIT) -X github.com/devboxos/devboxos/cli/cmd.date=$(DATE)"
+all: vet build test
 
-.PHONY: all build build-cli build-engine clean test proto help
+build:
+	$(GO) build $(GOFLAGS) ./shared/...
+	$(GO) build $(GOFLAGS) ./engine/...
+	$(GO) build $(GOFLAGS) ./cli/...
 
-all: build
-
-## build: Build CLI and Engine
-build: build-cli build-engine
-
-## build-cli: Build the CLI
-build-cli:
-	@echo "Building CLI..."
-	cd cli && go build $(LDFLAGS) -o ../dist/devbox .
-
-## build-engine: Build the engine daemon
-build-engine:
-	@echo "Building Engine..."
-	cd engine && go build $(LDFLAGS) -o ../dist/devbox-engine .
-
-## proto: Generate protobuf code
-proto:
-	@echo "Generating protobuf code..."
-	cd engine && protoc \
-		--go_out=. \
-		--go_opt=paths=source_relative \
-		--go-grpc_out=. \
-		--go-grpc_opt=paths=source_relative \
-		proto/engine.proto
-
-## test: Run all tests
 test:
-	@echo "Running tests..."
-	go test -race -coverprofile=coverage.out ./...
-	go tool cover -func=coverage.out
+	$(GO) test $(GOFLAGS) -count=1 ./shared/... ./engine/... ./cli/... -timeout 180s
 
-## test-unit: Run unit tests only
-test-unit:
-	@echo "Running unit tests..."
-	go test -race ./...
+test-race:
+	$(GO) test $(GOFLAGS) -race -count=1 ./shared/... ./engine/... ./cli/... -timeout 300s
 
-## clean: Remove build artifacts
+test-integration:
+	$(GO) test $(GOFLAGS) -tags=integration -count=1 ./shared/... ./engine/... ./cli/... -timeout 300s
+
+test-verbose:
+	$(GO) test $(GOFLAGS) -v -count=1 ./shared/... ./engine/... ./cli/... -timeout 180s
+
+vet:
+	$(GO) vet $(GOFLAGS) ./shared/...
+	$(GO) vet $(GOFLAGS) ./engine/...
+	$(GO) vet $(GOFLAGS) ./cli/...
+
+fmt:
+	$(GO) fmt ./shared/...
+	$(GO) fmt ./engine/...
+	$(GO) fmt ./cli/...
+
 clean:
-	@echo "Cleaning..."
-	rm -rf dist/
-	rm -f coverage.out
+	$(GO) clean -cache
+	rm -rf bin/
 
-## install: Install CLI to GOPATH/bin
-install:
-	@echo "Installing CLI..."
-	cd cli && go install $(LDFLAGS) .
+lint:
+	$(GO) vet $(GOFLAGS) ./shared/...
+	$(GO) vet $(GOFLAGS) ./engine/...
+	$(GO) vet $(GOFLAGS) ./cli/...
 
-## help: Show this help
-help:
-	@grep -E '^## ' Makefile | sed 's/## //g' | column -t -s ':'
+coverage:
+	$(GO) test $(GOFLAGS) -coverprofile=coverage.out -count=1 ./shared/... ./engine/... ./cli/... -timeout 180s
+	$(GO) tool cover -html=coverage.out -o coverage.html
+	$(GO) tool cover -func=coverage.out

@@ -239,6 +239,96 @@ func (c *Client) Reset(dir string) error {
 	}
 }
 
+// SecretSet stores a secret via the engine.
+func (c *Client) SecretSet(projectPath, name, value string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	resp, err := c.client.SecretSet(ctx, &pb.SecretSetRequest{
+		ProjectPath: projectPath,
+		Name:        name,
+		Value:       value,
+	})
+	if err != nil {
+		return fmt.Errorf("secret set: %w", err)
+	}
+	if resp.Error != "" {
+		return fmt.Errorf("%s", resp.Error)
+	}
+	return nil
+}
+
+// SecretGet retrieves a secret value via the engine.
+func (c *Client) SecretGet(projectPath, name string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	resp, err := c.client.SecretGet(ctx, &pb.SecretGetRequest{
+		ProjectPath: projectPath,
+		Name:        name,
+	})
+	if err != nil {
+		return "", fmt.Errorf("secret get: %w", err)
+	}
+	if resp.Error != "" {
+		return "", fmt.Errorf("%s", resp.Error)
+	}
+	return resp.Value, nil
+}
+
+// SecretList lists all secrets via the engine.
+func (c *Client) SecretList(projectPath string) ([]*pb.SecretEntry, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	resp, err := c.client.SecretList(ctx, &pb.SecretListRequest{
+		ProjectPath: projectPath,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("secret list: %w", err)
+	}
+	if resp.Error != "" {
+		return nil, fmt.Errorf("%s", resp.Error)
+	}
+	return resp.Secrets, nil
+}
+
+// SecretDelete removes a secret via the engine.
+func (c *Client) SecretDelete(projectPath, name string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	resp, err := c.client.SecretDelete(ctx, &pb.SecretDeleteRequest{
+		ProjectPath: projectPath,
+		Name:        name,
+	})
+	if err != nil {
+		return fmt.Errorf("secret delete: %w", err)
+	}
+	if resp.Error != "" {
+		return fmt.Errorf("%s", resp.Error)
+	}
+	return nil
+}
+
+// SecretRotate rotates a secret via the engine.
+func (c *Client) SecretRotate(projectPath, name string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	resp, err := c.client.SecretRotate(ctx, &pb.SecretRotateRequest{
+		ProjectPath: projectPath,
+		Name:        name,
+	})
+	if err != nil {
+		return fmt.Errorf("secret rotate: %w", err)
+	}
+	if resp.Error != "" {
+		return fmt.Errorf("%s", resp.Error)
+	}
+	return nil
+}
+
 // GetConfig returns the current CLI configuration.
 func (c *Client) GetConfig() (map[string]string, error) {
 	return loadConfig()
