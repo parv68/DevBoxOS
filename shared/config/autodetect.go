@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/devboxos/devboxos/shared/types"
-	"gopkg.in/yaml.v3"
+	"gopkg.in/yaml.v3" 
 )
 
 // AutoDetect scans a project directory and infers required runtimes and services.
