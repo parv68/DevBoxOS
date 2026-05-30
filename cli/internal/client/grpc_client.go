@@ -329,6 +329,107 @@ func (c *Client) SecretRotate(projectPath, name string) error {
 	return nil
 }
 
+// SnapshotSave saves a snapshot with streaming status updates.
+func (c *Client) SnapshotSave(projectPath, name string, includeLogs bool, statusCb func(string)) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := c.client.SnapshotSave(ctx, &pb.SnapshotSaveRequest{
+		ProjectPath: projectPath,
+		Name:        name,
+		IncludeLogs: includeLogs,
+	})
+	if err != nil {
+		return fmt.Errorf("snapshot save: %w", err)
+	}
+
+	for {
+		resp, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("snapshot save stream: %w", err)
+		}
+		if statusCb != nil {
+			statusCb(resp.Message)
+		}
+		if resp.Done {
+			if resp.Error != "" {
+				return fmt.Errorf("%s", resp.Error)
+			}
+			return nil
+		}
+	}
+}
+
+// SnapshotLoad loads a snapshot with streaming status updates.
+func (c *Client) SnapshotLoad(projectPath, snapshotId string, force bool, statusCb func(string)) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := c.client.SnapshotLoad(ctx, &pb.SnapshotLoadRequest{
+		ProjectPath: projectPath,
+		SnapshotId:  snapshotId,
+		Force:       force,
+	})
+	if err != nil {
+		return fmt.Errorf("snapshot load: %w", err)
+	}
+
+	for {
+		resp, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("snapshot load stream: %w", err)
+		}
+		if statusCb != nil {
+			statusCb(resp.Message)
+		}
+		if resp.Done {
+			if resp.Error != "" {
+				return fmt.Errorf("%s", resp.Error)
+			}
+			return nil
+		}
+	}
+}
+
+// SnapshotList lists all snapshots for a project.
+func (c *Client) SnapshotList(projectPath string) ([]*pb.Snapshot, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	resp, err := c.client.SnapshotList(ctx, &pb.SnapshotListRequest{
+		ProjectPath: projectPath,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("snapshot list: %w", err)
+	}
+
+	return resp.Snapshots, nil
+}
+
+// SnapshotDelete deletes a snapshot.
+func (c *Client) SnapshotDelete(projectPath, snapshotId string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	resp, err := c.client.SnapshotDelete(ctx, &pb.SnapshotDeleteRequest{
+		ProjectPath: projectPath,
+		SnapshotId:  snapshotId,
+	})
+	if err != nil {
+		return fmt.Errorf("snapshot delete: %w", err)
+	}
+	if resp.Error != "" {
+		return fmt.Errorf("%s", resp.Error)
+	}
+	return nil
+}
+
 // GetConfig returns the current CLI configuration.
 func (c *Client) GetConfig() (map[string]string, error) {
 	return loadConfig()

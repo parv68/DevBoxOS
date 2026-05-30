@@ -1,0 +1,64 @@
+version: 2
+
+project_name: devboxos
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: cli
+    dir: cli
+    binary: devboxos
+    main: .
+    ldflags:
+      - -s -w
+      - -X github.com/devboxos/devboxos/cli/cmd.version={{.Version}}
+      - -X github.com/devboxos/devboxos/cli/cmd.commit={{.Commit}}
+      - -X github.com/devboxos/devboxos/cli/cmd.date={{.Date}}
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - id: cli
+    builds: [cli]
+    name_template: "devboxos_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - LICENSE
+
+checksum:
+  name_template: "checksums.txt"
+
+snapshot:
+  name_template: "{{ .Version }}-SNAPSHOT-{{ .ShortCommit }}"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - Merge pull request
+      - Merge branch
+
+release:
+  github:
+    owner: devboxos
+    name: devboxos
+  prerelease: auto
+  name_template: "DevBoxOS v{{ .Version }}"

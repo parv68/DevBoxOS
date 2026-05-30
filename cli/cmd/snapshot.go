@@ -7,9 +7,11 @@ import (
 	"path/filepath"
 	"text/tabwriter"
 
+	"github.com/devboxos/devboxos/cli/internal/client"
 	"github.com/devboxos/devboxos/shared/config"
-	"github.com/devboxos/devboxos/shared/snapshot"
 	"github.com/devboxos/devboxos/shared/runtime/docker"
+	"github.com/devboxos/devboxos/shared/snapshot"
+	pb "github.com/devboxos/devboxos/engine/proto"
 	"github.com/spf13/cobra"
 )
 
@@ -60,8 +62,8 @@ var snapshotImportCmd = &cobra.Command{
 }
 
 var (
-	snapshotName      string
-	snapshotForce     bool
+	snapshotName        string
+	snapshotForce       bool
 	snapshotIncludeLogs bool
 )
 
@@ -84,13 +86,29 @@ func runSnapshotSave(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("get working directory: %w", err)
 	}
 
+	if snapshotName == "" {
+		snapshotName = fmt.Sprintf("%s-%s", filepath.Base(projectPath), "latest")
+	}
+
+	if cl, err := client.New(); err == nil {
+		defer cl.Close()
+		err = cl.SnapshotSave(projectPath, snapshotName, snapshotIncludeLogs, func(msg string) {
+			fmt.Printf("ℹ %s\n", msg)
+		})
+		if err != nil {
+			return err
+		}
+		fmt.Printf("✓ Snapshot saved: %s\n", snapshotName)
+		return nil
+	}
+
 	parser := config.NewParser()
 	cfg, err := parser.Parse(projectPath)
 	if err != nil {
 		return fmt.Errorf("parse config: %w", err)
 	}
 
-	if snapshotName == "" {
+	if snapshotName == fmt.Sprintf("%s-%s", filepath.Base(projectPath), "latest") {
 		snapshotName = fmt.Sprintf("%s-%s", cfg.Name, "latest")
 	}
 
@@ -127,6 +145,18 @@ func runSnapshotLoad(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("get working directory: %w", err)
 	}
 
+	if cl, err := client.New(); err == nil {
+		defer cl.Close()
+		err = cl.SnapshotLoad(projectPath, args[0], snapshotForce, func(msg string) {
+			fmt.Printf("ℹ %s\n", msg)
+		})
+		if err != nil {
+			return err
+		}
+		fmt.Printf("✓ Snapshot %s loaded\n", args[0][:8])
+		return nil
+	}
+
 	rt := docker.NewDockerRuntime()
 	ctx := context.Background()
 	if err := rt.Connect(ctx); err != nil {
@@ -159,6 +189,20 @@ func runSnapshotList(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("get working directory: %w", err)
 	}
 
+	if cl, err := client.New(); err == nil {
+		defer cl.Close()
+		snapshots, err := cl.SnapshotList(projectPath)
+		if err != nil {
+			return err
+		}
+		if len(snapshots) == 0 {
+			fmt.Println("No snapshots found")
+			return nil
+		}
+		printSnapshotTable(snapshots)
+		return nil
+	}
+
 	rt := docker.NewDockerRuntime()
 	ctx := context.Background()
 	if err := rt.Connect(ctx); err != nil {
@@ -189,10 +233,32 @@ func runSnapshotList(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
+func printSnapshotTable(snapshots []*pb.Snapshot) {
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "ID\tNAME\tSIZE\tCREATED")
+	for _, s := range snapshots {
+		id := s.Id
+		if len(id) > 8 {
+			id = id[:8]
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", id, s.Name, formatBytes(s.SizeBytes), s.CreatedAt)
+	}
+	w.Flush()
+}
+
 func runSnapshotDelete(cmd *cobra.Command, args []string) error {
 	projectPath, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("get working directory: %w", err)
+	}
+
+	if cl, err := client.New(); err == nil {
+		defer cl.Close()
+		if err := cl.SnapshotDelete(projectPath, args[0]); err != nil {
+			return err
+		}
+		fmt.Printf("✓ Snapshot %s deleted\n", args[0][:8])
+		return nil
 	}
 
 	rt := docker.NewDockerRuntime()

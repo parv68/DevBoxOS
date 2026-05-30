@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/devboxos/devboxos/cli/internal/client"
 	"github.com/devboxos/devboxos/shared/config"
 	"github.com/devboxos/devboxos/shared/diagnostics"
 	"github.com/devboxos/devboxos/shared/runtime/docker"
@@ -24,6 +25,63 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("get working directory: %w", err)
 	}
 
+	if cl, err := client.New(); err == nil {
+		defer cl.Close()
+		return runDoctorViaEngine(cl, dir)
+	}
+
+	return runDoctorLocal(dir)
+}
+
+func runDoctorViaEngine(cl *client.Client, dir string) error {
+	resp, err := cl.Doctor(dir)
+	if err != nil {
+		return fmt.Errorf("doctor: %w", err)
+	}
+
+	fmt.Println("DevBoxOS Diagnostics")
+	fmt.Println("────────────────────")
+	fmt.Println()
+
+	for _, issue := range resp.Issues {
+		icon := "✓"
+		switch issue.Severity {
+		case "error", "critical":
+			icon = "✗"
+		case "warning":
+			icon = "⚠"
+		}
+		fmt.Printf("%s %s\n", icon, issue.Message)
+		if issue.Details != "" {
+			fmt.Printf("  └ %s\n", issue.Details)
+		}
+	}
+
+	if len(resp.Suggestions) > 0 {
+		fmt.Println()
+		fmt.Println("Suggestions:")
+		for i, s := range resp.Suggestions {
+			fmt.Printf("  %d. %s\n", i+1, s)
+		}
+	}
+
+	issueCount := 0
+	for _, issue := range resp.Issues {
+		if issue.Severity == "error" || issue.Severity == "critical" {
+			issueCount++
+		}
+	}
+	if issueCount == 0 {
+		fmt.Println()
+		fmt.Println("✓ All checks passed")
+	} else {
+		fmt.Printf("\n%d check(s) with issues\n", issueCount)
+	}
+
+	return nil
+}
+
+func runDoctorLocal(dir string) error {
 	rt := docker.NewDockerRuntime()
 	ctx := context.Background()
 	if err := rt.Connect(ctx); err != nil {
@@ -62,7 +120,6 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Count issues
 	issueCount := 0
 	for _, r := range results {
 		if !r.Passed {
@@ -77,7 +134,6 @@ func runDoctor(cmd *cobra.Command, args []string) error {
 		fmt.Printf("\n%d check(s) with issues\n", issueCount)
 	}
 
-	// Validate config separately
 	parser := config.NewParser()
 	cfg, err := parser.Parse(dir)
 	if err == nil {

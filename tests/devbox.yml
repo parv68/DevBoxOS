@@ -1,0 +1,14 @@
+name: tests
+version: "1.0"
+runtimes:
+    go: "1.22"
+services:
+    api:
+        runtime: go122
+        command: go run main.go
+        port: "8080"
+networking:
+    discovery: true
+    expose:
+        - 8080
+    egress: default-deny

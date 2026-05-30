@@ -1,4 +1,4 @@
-.PHONY: all build test test-race test-integration clean lint vet fmt
+.PHONY: all build test test-race test-e2e test-integration clean lint vet fmt
 
 GO ?= go
 GOFLAGS ?= -mod=mod
@@ -19,6 +19,14 @@ test-race:
 
 test-integration:
 	$(GO) test $(GOFLAGS) -tags=integration -count=1 ./shared/... ./engine/... ./cli/... -timeout 300s
+
+test-e2e:
+	$(GO) build -o cli/devboxos ./cli
+	$(GO) test $(GOFLAGS) -tags=e2e -count=1 ./tests/... -timeout 600s -v
+
+test-e2e-short:
+	$(GO) build -o cli/devboxos ./cli
+	$(GO) test $(GOFLAGS) -tags=e2e -count=1 -short ./tests/... -timeout 300s -v
 
 test-verbose:
 	$(GO) test $(GOFLAGS) -v -count=1 ./shared/... ./engine/... ./cli/... -timeout 180s
