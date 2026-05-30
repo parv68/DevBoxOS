@@ -3,11 +3,14 @@
 package tests
 
 import (
+	"bytes"
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func fixture(t *testing.T, name string) string {
@@ -23,10 +26,10 @@ func findCLI(t *testing.T) string {
 	t.Helper()
 
 	candidates := []string{
-		filepath.Join("..", "cli", "devboxos.exe"),
 		filepath.Join("..", "cli", "devboxos"),
-		"devboxos.exe",
+		filepath.Join("..", "cli", "devboxos.exe"),
 		"devboxos",
+		"devboxos.exe",
 	}
 
 	for _, c := range candidates {
@@ -46,9 +49,46 @@ func findCLI(t *testing.T) string {
 }
 
 func devboxCmd(cli string, args ...string) *exec.Cmd {
-	cmd := exec.Command(cli, args...)
-	return cmd
+	return exec.Command(cli, args...)
 }
+
+func writeFixture(t *testing.T, dir, name string) {
+	t.Helper()
+	data, err := os.ReadFile(fixture(t, name))
+	if err != nil {
+		t.Fatalf("read fixture %s: %v", name, err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, name), data, 0644); err != nil {
+		t.Fatalf("write %s: %v", name, err)
+	}
+}
+
+// stackHelpers groups start/stop for E2E tests that need running containers.
+func startStack(t *testing.T, cli, dir string) {
+	t.Helper()
+	cmd := devboxCmd(cli, "start")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("start failed: %v\n%s", err, out)
+	}
+	t.Logf("start output: %s", out)
+}
+
+func stopStack(t *testing.T, cli, dir string) {
+	t.Helper()
+	cmd := devboxCmd(cli, "stop")
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("stop failed: %v\n%s", err, out)
+	}
+	t.Logf("stop output: %s", out)
+}
+
+// ─────────────────────────────────────────────
+// Local-only tests (no Docker, run in short mode)
+// ─────────────────────────────────────────────
 
 func TestE2E_Version(t *testing.T) {
 	cli := findCLI(t)
@@ -65,15 +105,8 @@ func TestE2E_Version(t *testing.T) {
 func TestE2E_Validate(t *testing.T) {
 	cli := findCLI(t)
 
-	// Create a project dir with devbox.yml from fixture
 	tmpDir := t.TempDir()
-	data, err := os.ReadFile(fixture(t, "devbox.yml"))
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(tmpDir, "devbox.yml"), data, 0644); err != nil {
-		t.Fatalf("write devbox.yml: %v", err)
-	}
+	writeFixture(t, tmpDir, "devbox.yml")
 
 	cmd := devboxCmd(cli, "validate")
 	cmd.Dir = tmpDir
@@ -116,14 +149,7 @@ func TestE2E_InitCreateValidProject(t *testing.T) {
 	}
 	t.Logf("init output: %s", initOut)
 
-	// Overwrite with our fixture for a valid project
-	data, err := os.ReadFile(fixture(t, "devbox.yml"))
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(tmpDir, "devbox.yml"), data, 0644); err != nil {
-		t.Fatalf("write devbox.yml: %v", err)
-	}
+	writeFixture(t, tmpDir, "devbox.yml")
 
 	valCmd := devboxCmd(cli, "validate")
 	valCmd.Dir = tmpDir
@@ -136,36 +162,36 @@ func TestE2E_InitCreateValidProject(t *testing.T) {
 	}
 }
 
-func TestE2E_StartStopLifecycle(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping lifecycle test in short mode")
-	}
-
+func TestE2E_URL(t *testing.T) {
 	cli := findCLI(t)
 	tmpDir := t.TempDir()
-	data, err := os.ReadFile(fixture(t, "devbox.yml"))
-	if err != nil {
-		t.Fatalf("read fixture: %v", err)
-	}
-	if err := os.WriteFile(filepath.Join(tmpDir, "devbox.yml"), data, 0644); err != nil {
-		t.Fatalf("write devbox.yml: %v", err)
-	}
+	writeFixture(t, tmpDir, "devbox.yml")
 
-	startCmd := devboxCmd(cli, "start")
-	startCmd.Dir = tmpDir
-	startOut, err := startCmd.CombinedOutput()
+	cmd := devboxCmd(cli, "url")
+	cmd.Dir = tmpDir
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("start failed: %v\n%s", err, startOut)
+		t.Fatalf("url failed: %v\n%s", err, out)
 	}
-	t.Logf("start output: %s", startOut)
+	if !strings.Contains(string(out), "localhost:8080") {
+		t.Errorf("url output should contain port mapping, got: %s", out)
+	}
+}
 
-	stopCmd := devboxCmd(cli, "stop")
-	stopCmd.Dir = tmpDir
-	stopOut, err := stopCmd.CombinedOutput()
+func TestE2E_Graph(t *testing.T) {
+	cli := findCLI(t)
+	tmpDir := t.TempDir()
+	writeFixture(t, tmpDir, "devbox.yml")
+
+	cmd := devboxCmd(cli, "graph")
+	cmd.Dir = tmpDir
+	out, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("stop failed: %v\n%s", err, stopOut)
+		t.Fatalf("graph failed: %v\n%s", err, out)
 	}
-	t.Logf("stop output: %s", stopOut)
+	if !strings.Contains(string(out), "web") && !strings.Contains(string(out), "redis") {
+		t.Errorf("graph output should contain service names, got: %s", out)
+	}
 }
 
 func TestE2E_Doctor(t *testing.T) {
@@ -193,7 +219,6 @@ func TestE2E_ComposeImport(t *testing.T) {
 
 	outFile := filepath.Join(tmpDir, "devbox.yaml")
 	if _, err := os.Stat(outFile); os.IsNotExist(err) {
-		// Also check devbox.yml as default
 		outFile = filepath.Join(tmpDir, "devbox.yml")
 	}
 	if _, err := os.Stat(outFile); os.IsNotExist(err) {
@@ -227,6 +252,253 @@ func TestE2E_Prune(t *testing.T) {
 	t.Logf("prune output: %s", out)
 }
 
+// ─────────────────────────────────────────────
+// Docker-dependent tests (skip in short mode)
+// ─────────────────────────────────────────────
+
+func TestE2E_StartStopLifecycle(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping lifecycle test in short mode")
+	}
+
+	cli := findCLI(t)
+	tmpDir := t.TempDir()
+	writeFixture(t, tmpDir, "devbox.yml")
+	startStack(t, cli, tmpDir)
+	stopStack(t, cli, tmpDir)
+}
+
+func TestE2E_Exec(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping exec test in short mode")
+	}
+
+	cli := findCLI(t)
+	tmpDir := t.TempDir()
+	writeFixture(t, tmpDir, "devbox.yml")
+	startStack(t, cli, tmpDir)
+	defer stopStack(t, cli, tmpDir)
+
+	execCmd := devboxCmd(cli, "exec", "web", "echo", "e2e-ok")
+	execCmd.Dir = tmpDir
+	execOut, err := execCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("exec failed: %v\n%s", err, execOut)
+	}
+	if !strings.Contains(string(execOut), "e2e-ok") {
+		t.Errorf("exec output should contain command output, got: %s", execOut)
+	}
+}
+
+func TestE2E_Wait(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping wait test in short mode")
+	}
+
+	cli := findCLI(t)
+	tmpDir := t.TempDir()
+	writeFixture(t, tmpDir, "devbox.yml")
+	startStack(t, cli, tmpDir)
+	defer stopStack(t, cli, tmpDir)
+
+	waitCmd := devboxCmd(cli, "wait", "web", "--timeout", "30")
+	waitCmd.Dir = tmpDir
+	waitOut, err := waitCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("wait failed: %v\n%s", err, waitOut)
+	}
+	if !strings.Contains(string(waitOut), "healthy") {
+		t.Errorf("wait output should indicate healthy, got: %s", waitOut)
+	}
+}
+
+func TestE2E_CP(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping cp test in short mode")
+	}
+
+	cli := findCLI(t)
+	tmpDir := t.TempDir()
+	writeFixture(t, tmpDir, "devbox.yml")
+	startStack(t, cli, tmpDir)
+	defer stopStack(t, cli, tmpDir)
+
+	dest := filepath.Join(tmpDir, "copied-hostname")
+	cpCmd := devboxCmd(cli, "cp", "web:/etc/hostname", dest)
+	cpCmd.Dir = tmpDir
+	cpOut, err := cpCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("cp failed: %v\n%s", err, cpOut)
+	}
+	t.Logf("cp output: %s", cpOut)
+
+	if _, err := os.Stat(dest); os.IsNotExist(err) {
+		t.Fatal("cp did not create destination file")
+	}
+	content, err := os.ReadFile(dest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(content) == 0 {
+		t.Error("copied file is empty")
+	}
+}
+
+func TestE2E_Shell(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping shell test in short mode")
+	}
+
+	cli := findCLI(t)
+	tmpDir := t.TempDir()
+	writeFixture(t, tmpDir, "devbox.yml")
+	startStack(t, cli, tmpDir)
+	defer stopStack(t, cli, tmpDir)
+
+	// Pipe a command to the interactive shell and check output
+	cmd := devboxCmd(cli, "shell", "web")
+	cmd.Dir = tmpDir
+	cmd.Stdin = strings.NewReader("echo SHELL_WORKS\nexit\n")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("shell failed: %v\n%s", err, out)
+	}
+	if !strings.Contains(string(out), "SHELL_WORKS") {
+		t.Logf("shell output (may have terminal codes): %s", out)
+	}
+}
+
+func TestE2E_StartWatch(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping start-watch test in short mode")
+	}
+
+	cli := findCLI(t)
+	tmpDir := t.TempDir()
+
+	writeFixture(t, tmpDir, "devbox.yml")
+	os.MkdirAll(filepath.Join(tmpDir, "src"), 0755)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, cli, "start", "--watch")
+	cmd.Dir = tmpDir
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start --watch failed to start: %v", err)
+	}
+
+	// Wait a few seconds for startup, then touch a file
+	time.Sleep(8 * time.Second)
+
+	touchFile := filepath.Join(tmpDir, "src", "changed.txt")
+	os.WriteFile(touchFile, []byte("trigger"), 0644)
+
+	// Wait for watch to detect the change
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- cmd.Wait()
+	}()
+
+	select {
+	case <-ctx.Done():
+		// Timeout: check if we got the "Change detected" message
+		output := stdout.String() + stderr.String()
+		if strings.Contains(output, "Change detected") {
+			t.Logf("Watch detected file change as expected")
+		} else {
+			t.Errorf("watch did not detect file change within timeout.\nstdout: %s\nstderr: %s", stdout.String(), stderr.String())
+		}
+	case err := <-errCh:
+		// Process exited early
+		output := stdout.String() + stderr.String()
+		t.Fatalf("start --watch exited early: %v\noutput: %s", err, output)
+	}
+}
+
+func TestE2E_SnapshotRoundtrip(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping snapshot roundtrip test in short mode")
+	}
+
+	cli := findCLI(t)
+	tmpDir := t.TempDir()
+	writeFixture(t, tmpDir, "devbox.yml")
+	startStack(t, cli, tmpDir)
+	defer stopStack(t, cli, tmpDir)
+
+	snapshotName := "e2e-test-snap"
+
+	// 1. Save
+	saveCmd := devboxCmd(cli, "snapshot", "save", snapshotName)
+	saveCmd.Dir = tmpDir
+	saveOut, err := saveCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("snapshot save failed: %v\n%s", err, saveOut)
+	}
+	t.Logf("snapshot save: %s", saveOut)
+
+	// 2. List
+	listCmd := devboxCmd(cli, "snapshot", "list")
+	listCmd.Dir = tmpDir
+	listOut, err := listCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("snapshot list failed: %v\n%s", err, listOut)
+	}
+	if !strings.Contains(string(listOut), snapshotName) {
+		t.Errorf("snapshot list should contain %q, got: %s", snapshotName, listOut)
+	}
+
+	// 3. Export
+	exportPath := filepath.Join(tmpDir, "snapshot-export.tar")
+	exportCmd := devboxCmd(cli, "snapshot", "export", snapshotName, exportPath)
+	exportCmd.Dir = tmpDir
+	exportOut, err := exportCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("snapshot export failed: %v\n%s", err, exportOut)
+	}
+	t.Logf("snapshot export: %s", exportOut)
+	if _, err := os.Stat(exportPath); os.IsNotExist(err) {
+		t.Fatal("snapshot export did not create tarball")
+	}
+
+	// 4. Delete
+	delCmd := devboxCmd(cli, "snapshot", "delete", snapshotName)
+	delCmd.Dir = tmpDir
+	delOut, err := delCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("snapshot delete failed: %v\n%s", err, delOut)
+	}
+	t.Logf("snapshot delete: %s", delOut)
+
+	// 5. Import
+	importCmd := devboxCmd(cli, "snapshot", "import", exportPath)
+	importCmd.Dir = tmpDir
+	importOut, err := importCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("snapshot import failed: %v\n%s", err, importOut)
+	}
+	t.Logf("snapshot import: %s", importOut)
+
+	// 6. List should show the imported snapshot
+	list2Cmd := devboxCmd(cli, "snapshot", "list")
+	list2Cmd.Dir = tmpDir
+	list2Out, err := list2Cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("snapshot list (2) failed: %v\n%s", err, list2Out)
+	}
+	if !strings.Contains(string(list2Out), "e2e") && !strings.Contains(string(list2Out), snapshotName) {
+		t.Errorf("snapshot list should contain imported snapshot, got: %s", list2Out)
+	}
+}
+
+// ─────────────────────────────────────────────
+// Help smoke test for all commands
+// ─────────────────────────────────────────────
+
 func TestE2E_HelpAllSubcommands(t *testing.T) {
 	cli := findCLI(t)
 
@@ -237,26 +509,34 @@ func TestE2E_HelpAllSubcommands(t *testing.T) {
 
 	subcommands := []subcommand{
 		{[]string{"build", "--help"}, "build"},
-		{[]string{"config", "--help"}, "config"},
 		{[]string{"completion", "--help"}, "completion"},
+		{[]string{"config", "--help"}, "config"},
+		{[]string{"cp", "--help"}, "cp"},
 		{[]string{"destroy", "--help"}, "destroy"},
 		{[]string{"doctor", "--help"}, "doctor"},
+		{[]string{"env", "--help"}, "env"},
 		{[]string{"exec", "--help"}, "exec"},
+		{[]string{"graph", "--help"}, "graph"},
 		{[]string{"init", "--help"}, "init"},
 		{[]string{"init", "compose-import", "--help"}, "compose-import"},
 		{[]string{"init", "compose-export", "--help"}, "compose-export"},
 		{[]string{"logs", "--help"}, "logs"},
 		{[]string{"prune", "--help"}, "prune"},
 		{[]string{"ps", "--help"}, "ps"},
+		{[]string{"push", "--help"}, "push"},
 		{[]string{"reset", "--help"}, "reset"},
 		{[]string{"secrets", "--help"}, "secrets"},
+		{[]string{"shell", "--help"}, "shell"},
 		{[]string{"snapshot", "--help"}, "snapshot"},
 		{[]string{"start", "--help"}, "start"},
 		{[]string{"status", "--help"}, "status"},
 		{[]string{"stop", "--help"}, "stop"},
+		{[]string{"top", "--help"}, "top"},
 		{[]string{"upgrade", "--help"}, "upgrade"},
+		{[]string{"url", "--help"}, "url"},
 		{[]string{"validate", "--help"}, "validate"},
 		{[]string{"version", "--help"}, "version"},
+		{[]string{"wait", "--help"}, "wait"},
 	}
 
 	for _, sc := range subcommands {

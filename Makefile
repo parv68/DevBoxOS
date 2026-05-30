@@ -20,12 +20,17 @@ test-race:
 test-integration:
 	$(GO) test $(GOFLAGS) -tags=integration -count=1 ./shared/... ./engine/... ./cli/... -timeout 300s
 
+GOEXE := $(shell $(GO) env GOEXE)
+CLI_BIN := cli/devboxos$(GOEXE)
+
 test-e2e:
-	$(GO) build -o cli/devboxos ./cli
+	rm -f cli/devboxos cli/devboxos.exe
+	$(GO) build -o $(CLI_BIN) ./cli
 	$(GO) test $(GOFLAGS) -tags=e2e -count=1 ./tests/... -timeout 600s -v
 
 test-e2e-short:
-	$(GO) build -o cli/devboxos ./cli
+	rm -f cli/devboxos cli/devboxos.exe
+	$(GO) build -o $(CLI_BIN) ./cli
 	$(GO) test $(GOFLAGS) -tags=e2e -count=1 -short ./tests/... -timeout 300s -v
 
 test-verbose:
