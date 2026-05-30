@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -22,6 +23,11 @@ import (
 	"github.com/devboxos/devboxos/shared/runtime/docker"
 	"github.com/devboxos/devboxos/shared/secrets"
 	"github.com/devboxos/devboxos/shared/snapshot"
+	"github.com/devboxos/devboxos/shared/types"
+	"github.com/docker/docker/api/types/container"
+	"github.com/docker/docker/api/types/filters"
+	"github.com/docker/docker/client"
+	"github.com/docker/docker/pkg/stdcopy"
 	"google.golang.org/grpc"
 )
 
@@ -400,6 +406,239 @@ func (s *server) SnapshotDelete(ctx context.Context, req *pb.SnapshotDeleteReque
 	return &pb.StatusResponse{Status: "ok"}, nil
 }
 
+func (s *server) SnapshotExport(req *pb.SnapshotExportRequest, stream pb.EngineService_SnapshotExportServer) error {
+	rt := docker.NewDockerRuntime()
+	if err := rt.Connect(stream.Context()); err != nil {
+		stream.Send(&pb.StreamResponse{Status: "error", Error: "Docker not available", Done: true})
+		return nil
+	}
+	defer rt.Close()
+
+	mgr := snapshot.NewManager(rt, req.ProjectPath)
+
+	// If no snapshot ID provided, find the latest
+	snapshotID := req.SnapshotId
+	if snapshotID == "" {
+		infos, err := mgr.List()
+		if err != nil || len(infos) == 0 {
+			stream.Send(&pb.StreamResponse{Status: "error", Error: "No snapshots found", Done: true})
+			return nil
+		}
+		snapshotID = infos[len(infos)-1].ID
+	}
+
+	statusChan := make(chan string, 64)
+	done := make(chan error, 1)
+
+	go func() {
+		done <- mgr.Export(snapshotID, req.ExportPath, statusChan)
+	}()
+
+	for {
+		select {
+		case msg := <-statusChan:
+			stream.Send(&pb.StreamResponse{Status: "info", Message: msg})
+		case err := <-done:
+			if err != nil {
+				stream.Send(&pb.StreamResponse{Status: "error", Error: err.Error(), Done: true})
+				return nil
+			}
+			stream.Send(&pb.StreamResponse{Status: "done", Done: true})
+			return nil
+		case <-stream.Context().Done():
+			return stream.Context().Err()
+		}
+	}
+}
+
+func (s *server) SnapshotImport(req *pb.SnapshotImportRequest, stream pb.EngineService_SnapshotImportServer) error {
+	rt := docker.NewDockerRuntime()
+	if err := rt.Connect(stream.Context()); err != nil {
+		stream.Send(&pb.StreamResponse{Status: "error", Error: "Docker not available", Done: true})
+		return nil
+	}
+	defer rt.Close()
+
+	mgr := snapshot.NewManager(rt, req.ProjectPath)
+
+	statusChan := make(chan string, 64)
+	done := make(chan error, 1)
+
+	go func() {
+		done <- mgr.Import(req.ImportPath, statusChan)
+	}()
+
+	for {
+		select {
+		case msg := <-statusChan:
+			stream.Send(&pb.StreamResponse{Status: "info", Message: msg})
+		case err := <-done:
+			if err != nil {
+				stream.Send(&pb.StreamResponse{Status: "error", Error: err.Error(), Done: true})
+				return nil
+			}
+
+			stream.Send(&pb.StreamResponse{Status: "done", Done: true})
+			return nil
+		case <-stream.Context().Done():
+			return stream.Context().Err()
+		}
+	}
+}
+
+func (s *server) Build(req *pb.BuildRequest, stream pb.EngineService_BuildServer) error {
+	send := func(status, msg string, done bool) {
+		stream.Send(&pb.StreamResponse{
+			Status:  status,
+			Message: msg,
+			Done:    done,
+		})
+	}
+
+	parser := config.NewParser()
+	cfg, err := parser.Parse(req.ProjectPath)
+	if err != nil {
+		send("error", fmt.Sprintf("Failed to parse config: %v", err), true)
+		return nil
+	}
+
+	rt := docker.NewDockerRuntime()
+	if err := rt.Connect(stream.Context()); err != nil {
+		send("error", "Docker not available", true)
+		return nil
+	}
+	defer rt.Close()
+
+	allServices := cfg.Services
+	filtered := make(map[string]types.Service)
+	if req.Service != "" {
+		svc, ok := allServices[req.Service]
+		if !ok {
+			send("error", fmt.Sprintf("Service not found: %s", req.Service), true)
+			return nil
+		}
+		filtered[req.Service] = svc
+	} else {
+		filtered = allServices
+	}
+
+	for svcName, svc := range filtered {
+		if svc.Build == nil || svc.Build.Context == "" {
+			if req.Service != "" {
+				send("error", fmt.Sprintf("Service %s has no build configuration", svcName), true)
+				return nil
+			}
+			continue
+		}
+
+		buildCtx := svc.Build.Context
+		if !filepath.IsAbs(buildCtx) {
+			buildCtx = filepath.Join(req.ProjectPath, buildCtx)
+		}
+
+		tags := []string{fmt.Sprintf("devboxos-%s:latest", svcName)}
+		if svc.Image != "" {
+			tags = []string{svc.Image}
+		}
+
+		statusChan := make(chan string, 64)
+		done := make(chan error, 1)
+
+		send("info", fmt.Sprintf("Building service: %s", svcName), false)
+
+		go func() {
+			_, err := rt.BuildImage(stream.Context(), runtime.BuildConfig{
+				ContextDir: buildCtx,
+				Dockerfile: svc.Build.Dockerfile,
+				BuildArgs:  svc.Build.Args,
+				Tags:       tags,
+				NoCache:    req.NoCache,
+				Pull:       req.Pull,
+			}, statusChan)
+			done <- err
+		}()
+
+		buildDone := false
+		for !buildDone {
+			select {
+			case msg := <-statusChan:
+				send("info", msg, false)
+			case err := <-done:
+				if err != nil {
+					send("error", fmt.Sprintf("Build failed for %s: %v", svcName, err), true)
+					return nil
+				}
+				send("info", fmt.Sprintf("Service %s built", svcName), false)
+				buildDone = true
+			case <-stream.Context().Done():
+				return stream.Context().Err()
+			}
+		}
+	}
+
+	send("done", "All services built", true)
+	return nil
+}
+
+func (s *server) Exec(ctx context.Context, req *pb.ExecRequest) (*pb.ExecResponse, error) {
+	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		return &pb.ExecResponse{Stderr: fmt.Sprintf("Docker not available: %v", err), ExitCode: -1}, nil
+	}
+
+	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{
+		Filters: filters.NewArgs(
+			filters.Arg("label", "devboxos.service="+req.Service),
+		),
+	})
+	if err != nil {
+		return &pb.ExecResponse{Stderr: fmt.Sprintf("List containers: %v", err), ExitCode: -1}, nil
+	}
+
+	if len(containers) == 0 {
+		return &pb.ExecResponse{Stderr: fmt.Sprintf("No running container found for service: %s", req.Service), ExitCode: -1}, nil
+	}
+
+	containerID := containers[0].ID
+
+	execConfig := container.ExecOptions{
+		Cmd:          append([]string{req.Command}, req.Args...),
+		AttachStdout: true,
+		AttachStderr: true,
+	}
+	execResp, err := dockerClient.ContainerExecCreate(ctx, containerID, execConfig)
+	if err != nil {
+		return &pb.ExecResponse{Stderr: fmt.Sprintf("Create exec: %v", err), ExitCode: -1}, nil
+	}
+
+	attachResp, err := dockerClient.ContainerExecAttach(ctx, execResp.ID, container.ExecStartOptions{})
+	if err != nil {
+		return &pb.ExecResponse{Stderr: fmt.Sprintf("Attach exec: %v", err), ExitCode: -1}, nil
+	}
+	defer attachResp.Close()
+
+	var stdoutBuf, stderrBuf strings.Builder
+	_, err = stdcopy.StdCopy(&stdoutBuf, &stderrBuf, attachResp.Reader)
+	if err != nil {
+		return &pb.ExecResponse{Stderr: fmt.Sprintf("Read exec output: %v", err), ExitCode: -1}, nil
+	}
+
+	inspectResp, err := dockerClient.ContainerExecInspect(ctx, execResp.ID)
+	if err != nil {
+		return &pb.ExecResponse{
+			Stdout:   stdoutBuf.String(),
+			Stderr:   stderrBuf.String(),
+			ExitCode: -1,
+		}, nil
+	}
+
+	return &pb.ExecResponse{
+		Stdout:   stdoutBuf.String(),
+		Stderr:   stderrBuf.String(),
+		ExitCode: int32(inspectResp.ExitCode),
+	}, nil
+}
+
 func (s *server) Doctor(ctx context.Context, req *pb.DoctorRequest) (*pb.DoctorResponse, error) {
 	var issues []*pb.DiagnosticIssue
 
@@ -443,7 +682,29 @@ func (s *server) Doctor(ctx context.Context, req *pb.DoctorRequest) (*pb.DoctorR
 		})
 	}
 
-	return &pb.DoctorResponse{Issues: issues}, nil
+	var suggestions []string
+
+	for _, issue := range issues {
+		switch {
+		case strings.Contains(issue.Message, "Docker"):
+			suggestions = append(suggestions, "Start Docker Desktop and ensure it is running")
+			suggestions = append(suggestions, "On Windows, ensure Docker Desktop uses WSL 2 backend")
+		case strings.Contains(issue.Message, "devbox.yml") || strings.Contains(issue.Message, "Configuration"):
+			suggestions = append(suggestions, "Create a configuration: devbox init")
+			suggestions = append(suggestions, "Import from Docker Compose: devbox init compose-import ./docker-compose.yml")
+		}
+	}
+
+	if len(suggestions) == 0 {
+		if req.ProjectPath != "" {
+			if _, err := os.Stat(filepath.Join(req.ProjectPath, "devbox.yml")); os.IsNotExist(err) {
+				suggestions = append(suggestions, "Run 'devbox init' to create a configuration")
+			}
+		}
+		suggestions = append(suggestions, "Run 'devbox start' to start services")
+	}
+
+	return &pb.DoctorResponse{Issues: issues, Suggestions: suggestions}, nil
 }
 
 func (s *server) Reset(req *pb.ResetRequest, stream pb.EngineService_ResetServer) error {

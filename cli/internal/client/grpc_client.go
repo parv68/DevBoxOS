@@ -430,6 +430,127 @@ func (c *Client) SnapshotDelete(projectPath, snapshotId string) error {
 	return nil
 }
 
+// SnapshotExport saves a snapshot to a local file with streaming status updates.
+func (c *Client) SnapshotExport(projectPath, exportPath, snapshotID string, statusCb func(string)) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := c.client.SnapshotExport(ctx, &pb.SnapshotExportRequest{
+		ProjectPath: projectPath,
+		ExportPath:  exportPath,
+		SnapshotId:  snapshotID,
+	})
+	if err != nil {
+		return fmt.Errorf("snapshot export: %w", err)
+	}
+
+	for {
+		resp, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("snapshot export stream: %w", err)
+		}
+		if statusCb != nil {
+			statusCb(resp.Message)
+		}
+		if resp.Done {
+			if resp.Error != "" {
+				return fmt.Errorf("%s", resp.Error)
+			}
+			return nil
+		}
+	}
+}
+
+// SnapshotImport loads a snapshot from a local file with streaming status updates.
+func (c *Client) SnapshotImport(projectPath, importPath string, force bool, statusCb func(string)) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := c.client.SnapshotImport(ctx, &pb.SnapshotImportRequest{
+		ProjectPath: projectPath,
+		ImportPath:  importPath,
+		Force:       force,
+	})
+	if err != nil {
+		return fmt.Errorf("snapshot import: %w", err)
+	}
+
+	for {
+		resp, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("snapshot import stream: %w", err)
+		}
+		if statusCb != nil {
+			statusCb(resp.Message)
+		}
+		if resp.Done {
+			if resp.Error != "" {
+				return fmt.Errorf("%s", resp.Error)
+			}
+			return nil
+		}
+	}
+}
+
+// Build builds service images via the engine with streaming status updates.
+func (c *Client) Build(projectPath, service string, noCache, pull bool, statusCallback func(status, msg string)) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 300*time.Second)
+	defer cancel()
+
+	stream, err := c.client.Build(ctx, &pb.BuildRequest{
+		ProjectPath: projectPath,
+		Service:     service,
+		NoCache:     noCache,
+		Pull:        pull,
+	})
+	if err != nil {
+		return fmt.Errorf("build: %w", err)
+	}
+
+	for {
+		resp, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
+		if err != nil {
+			return fmt.Errorf("build stream: %w", err)
+		}
+		if statusCallback != nil {
+			statusCallback(resp.Status, resp.Message)
+		}
+		if resp.Done {
+			if resp.Error != "" {
+				return fmt.Errorf("%s", resp.Error)
+			}
+			return nil
+		}
+	}
+}
+
+// Exec runs a command inside a service container via the engine.
+func (c *Client) Exec(projectPath, service, command string, args []string) (string, string, int, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	resp, err := c.client.Exec(ctx, &pb.ExecRequest{
+		ProjectPath: projectPath,
+		Service:     service,
+		Command:     command,
+		Args:        args,
+	})
+	if err != nil {
+		return "", "", -1, fmt.Errorf("exec: %w", err)
+	}
+
+	return resp.Stdout, resp.Stderr, int(resp.ExitCode), nil
+}
+
 // GetConfig returns the current CLI configuration.
 func (c *Client) GetConfig() (map[string]string, error) {
 	return loadConfig()

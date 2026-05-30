@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.6.2
 // - protoc             v5.29.3
-// source: proto/engine.proto
+// source: engine.proto
 
 package enginepb
 
@@ -35,6 +35,10 @@ const (
 	EngineService_SecretList_FullMethodName     = "/engine.EngineService/SecretList"
 	EngineService_SecretDelete_FullMethodName   = "/engine.EngineService/SecretDelete"
 	EngineService_SecretRotate_FullMethodName   = "/engine.EngineService/SecretRotate"
+	EngineService_SnapshotExport_FullMethodName = "/engine.EngineService/SnapshotExport"
+	EngineService_SnapshotImport_FullMethodName = "/engine.EngineService/SnapshotImport"
+	EngineService_Build_FullMethodName          = "/engine.EngineService/Build"
+	EngineService_Exec_FullMethodName           = "/engine.EngineService/Exec"
 )
 
 // EngineServiceClient is the client API for EngineService service.
@@ -57,6 +61,10 @@ type EngineServiceClient interface {
 	SecretList(ctx context.Context, in *SecretListRequest, opts ...grpc.CallOption) (*SecretListResponse, error)
 	SecretDelete(ctx context.Context, in *SecretDeleteRequest, opts ...grpc.CallOption) (*StatusResponse, error)
 	SecretRotate(ctx context.Context, in *SecretRotateRequest, opts ...grpc.CallOption) (*StatusResponse, error)
+	SnapshotExport(ctx context.Context, in *SnapshotExportRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamResponse], error)
+	SnapshotImport(ctx context.Context, in *SnapshotImportRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamResponse], error)
+	Build(ctx context.Context, in *BuildRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamResponse], error)
+	Exec(ctx context.Context, in *ExecRequest, opts ...grpc.CallOption) (*ExecResponse, error)
 }
 
 type engineServiceClient struct {
@@ -272,6 +280,73 @@ func (c *engineServiceClient) SecretRotate(ctx context.Context, in *SecretRotate
 	return out, nil
 }
 
+func (c *engineServiceClient) SnapshotExport(ctx context.Context, in *SnapshotExportRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &EngineService_ServiceDesc.Streams[5], EngineService_SnapshotExport_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[SnapshotExportRequest, StreamResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type EngineService_SnapshotExportClient = grpc.ServerStreamingClient[StreamResponse]
+
+func (c *engineServiceClient) SnapshotImport(ctx context.Context, in *SnapshotImportRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &EngineService_ServiceDesc.Streams[6], EngineService_SnapshotImport_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[SnapshotImportRequest, StreamResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type EngineService_SnapshotImportClient = grpc.ServerStreamingClient[StreamResponse]
+
+func (c *engineServiceClient) Build(ctx context.Context, in *BuildRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &EngineService_ServiceDesc.Streams[7], EngineService_Build_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[BuildRequest, StreamResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type EngineService_BuildClient = grpc.ServerStreamingClient[StreamResponse]
+
+func (c *engineServiceClient) Exec(ctx context.Context, in *ExecRequest, opts ...grpc.CallOption) (*ExecResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ExecResponse)
+	err := c.cc.Invoke(ctx, EngineService_Exec_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // EngineServiceServer is the server API for EngineService service.
 // All implementations must embed UnimplementedEngineServiceServer
 // for forward compatibility.
@@ -292,6 +367,10 @@ type EngineServiceServer interface {
 	SecretList(context.Context, *SecretListRequest) (*SecretListResponse, error)
 	SecretDelete(context.Context, *SecretDeleteRequest) (*StatusResponse, error)
 	SecretRotate(context.Context, *SecretRotateRequest) (*StatusResponse, error)
+	SnapshotExport(*SnapshotExportRequest, grpc.ServerStreamingServer[StreamResponse]) error
+	SnapshotImport(*SnapshotImportRequest, grpc.ServerStreamingServer[StreamResponse]) error
+	Build(*BuildRequest, grpc.ServerStreamingServer[StreamResponse]) error
+	Exec(context.Context, *ExecRequest) (*ExecResponse, error)
 	mustEmbedUnimplementedEngineServiceServer()
 }
 
@@ -349,6 +428,18 @@ func (UnimplementedEngineServiceServer) SecretDelete(context.Context, *SecretDel
 }
 func (UnimplementedEngineServiceServer) SecretRotate(context.Context, *SecretRotateRequest) (*StatusResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SecretRotate not implemented")
+}
+func (UnimplementedEngineServiceServer) SnapshotExport(*SnapshotExportRequest, grpc.ServerStreamingServer[StreamResponse]) error {
+	return status.Error(codes.Unimplemented, "method SnapshotExport not implemented")
+}
+func (UnimplementedEngineServiceServer) SnapshotImport(*SnapshotImportRequest, grpc.ServerStreamingServer[StreamResponse]) error {
+	return status.Error(codes.Unimplemented, "method SnapshotImport not implemented")
+}
+func (UnimplementedEngineServiceServer) Build(*BuildRequest, grpc.ServerStreamingServer[StreamResponse]) error {
+	return status.Error(codes.Unimplemented, "method Build not implemented")
+}
+func (UnimplementedEngineServiceServer) Exec(context.Context, *ExecRequest) (*ExecResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Exec not implemented")
 }
 func (UnimplementedEngineServiceServer) mustEmbedUnimplementedEngineServiceServer() {}
 func (UnimplementedEngineServiceServer) testEmbeddedByValue()                       {}
@@ -624,6 +715,57 @@ func _EngineService_SecretRotate_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EngineService_SnapshotExport_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SnapshotExportRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(EngineServiceServer).SnapshotExport(m, &grpc.GenericServerStream[SnapshotExportRequest, StreamResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type EngineService_SnapshotExportServer = grpc.ServerStreamingServer[StreamResponse]
+
+func _EngineService_SnapshotImport_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SnapshotImportRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(EngineServiceServer).SnapshotImport(m, &grpc.GenericServerStream[SnapshotImportRequest, StreamResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type EngineService_SnapshotImportServer = grpc.ServerStreamingServer[StreamResponse]
+
+func _EngineService_Build_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(BuildRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(EngineServiceServer).Build(m, &grpc.GenericServerStream[BuildRequest, StreamResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type EngineService_BuildServer = grpc.ServerStreamingServer[StreamResponse]
+
+func _EngineService_Exec_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ExecRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EngineServiceServer).Exec(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: EngineService_Exec_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EngineServiceServer).Exec(ctx, req.(*ExecRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // EngineService_ServiceDesc is the grpc.ServiceDesc for EngineService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -675,6 +817,10 @@ var EngineService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "SecretRotate",
 			Handler:    _EngineService_SecretRotate_Handler,
 		},
+		{
+			MethodName: "Exec",
+			Handler:    _EngineService_Exec_Handler,
+		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
@@ -702,6 +848,21 @@ var EngineService_ServiceDesc = grpc.ServiceDesc{
 			Handler:       _EngineService_Reset_Handler,
 			ServerStreams: true,
 		},
+		{
+			StreamName:    "SnapshotExport",
+			Handler:       _EngineService_SnapshotExport_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "SnapshotImport",
+			Handler:       _EngineService_SnapshotImport_Handler,
+			ServerStreams: true,
+		},
+		{
+			StreamName:    "Build",
+			Handler:       _EngineService_Build_Handler,
+			ServerStreams: true,
+		},
 	},
-	Metadata: "proto/engine.proto",
+	Metadata: "engine.proto",
 }

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/devboxos/devboxos/cli/internal/client"
 	"github.com/devboxos/devboxos/shared/config"
 	"github.com/devboxos/devboxos/shared/runtime"
 	"github.com/devboxos/devboxos/shared/runtime/docker"
@@ -37,6 +38,22 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	projectPath, err := os.Getwd()
 	if err != nil {
 		return fmt.Errorf("get working directory: %w", err)
+	}
+
+	serviceName := ""
+	if len(args) > 0 {
+		serviceName = args[0]
+	}
+
+	if cl, err := client.New(); err == nil {
+		defer cl.Close()
+		err = cl.Build(projectPath, serviceName, buildNoCache, buildPull, func(status, msg string) {
+			fmt.Printf("ℹ %s\n", msg)
+		})
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 
 	parser := config.NewParser()

@@ -20,6 +20,10 @@ service EngineService {
   rpc SecretList(SecretListRequest) returns (SecretListResponse);
   rpc SecretDelete(SecretDeleteRequest) returns (StatusResponse);
   rpc SecretRotate(SecretRotateRequest) returns (StatusResponse);
+  rpc SnapshotExport(SnapshotExportRequest) returns (stream StreamResponse);
+  rpc SnapshotImport(SnapshotImportRequest) returns (stream StreamResponse);
+  rpc Build(BuildRequest) returns (stream StreamResponse);
+  rpc Exec(ExecRequest) returns (ExecResponse);
 }
 
 message PingRequest {}
@@ -180,4 +184,36 @@ message SecretDeleteRequest {
 message SecretRotateRequest {
   string project_path = 1;
   string name = 2;
+}
+
+message SnapshotExportRequest {
+  string project_path = 1;
+  string export_path = 2;
+  string snapshot_id = 3;
+}
+
+message SnapshotImportRequest {
+  string project_path = 1;
+  string import_path = 2;
+  bool force = 3;
+}
+
+message BuildRequest {
+  string project_path = 1;
+  string service = 2;
+  bool no_cache = 3;
+  bool pull = 4;
+}
+
+message ExecRequest {
+  string project_path = 1;
+  string service = 2;
+  string command = 3;
+  repeated string args = 4;
+}
+
+message ExecResponse {
+  string stdout = 1;
+  string stderr = 2;
+  int32 exit_code = 3;
 }

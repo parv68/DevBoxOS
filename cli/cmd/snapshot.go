@@ -410,6 +410,23 @@ func runSnapshotExport(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("get working directory: %w", err)
 	}
 
+	outputPath := args[1]
+	if !filepath.IsAbs(outputPath) {
+		outputPath = filepath.Join(projectPath, outputPath)
+	}
+
+	if cl, err := client.New(); err == nil {
+		defer cl.Close()
+		err = cl.SnapshotExport(projectPath, outputPath, args[0], func(msg string) {
+			fmt.Printf("ℹ %s\n", msg)
+		})
+		if err != nil {
+			return err
+		}
+		fmt.Printf("✓ Snapshot exported to %s\n", outputPath)
+		return nil
+	}
+
 	rt := docker.NewDockerRuntime()
 	ctx := context.Background()
 	if err := rt.Connect(ctx); err != nil {
@@ -418,11 +435,6 @@ func runSnapshotExport(cmd *cobra.Command, args []string) error {
 	defer rt.Close()
 
 	mgr := snapshot.NewManager(rt, projectPath)
-
-	outputPath := args[1]
-	if !filepath.IsAbs(outputPath) {
-		outputPath = filepath.Join(projectPath, outputPath)
-	}
 
 	statusChan := make(chan string, 64)
 	go func() {
@@ -447,6 +459,23 @@ func runSnapshotImport(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("get working directory: %w", err)
 	}
 
+	tarballPath := args[0]
+	if !filepath.IsAbs(tarballPath) {
+		tarballPath = filepath.Join(projectPath, tarballPath)
+	}
+
+	if cl, err := client.New(); err == nil {
+		defer cl.Close()
+		err = cl.SnapshotImport(projectPath, tarballPath, false, func(msg string) {
+			fmt.Printf("ℹ %s\n", msg)
+		})
+		if err != nil {
+			return err
+		}
+		fmt.Printf("✓ Snapshot imported from %s\n", tarballPath)
+		return nil
+	}
+
 	rt := docker.NewDockerRuntime()
 	ctx := context.Background()
 	if err := rt.Connect(ctx); err != nil {
@@ -455,11 +484,6 @@ func runSnapshotImport(cmd *cobra.Command, args []string) error {
 	defer rt.Close()
 
 	mgr := snapshot.NewManager(rt, projectPath)
-
-	tarballPath := args[0]
-	if !filepath.IsAbs(tarballPath) {
-		tarballPath = filepath.Join(projectPath, tarballPath)
-	}
 
 	statusChan := make(chan string, 64)
 	go func() {
