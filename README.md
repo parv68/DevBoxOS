@@ -176,6 +176,34 @@ protoc --go_out=. --go_opt=paths=source_relative \
   engine/proto/engine.proto
 ```
 
+## Additional CLI Commands (v0.2+)
+
+| Command | Description | Engine Required |
+|---------|-------------|----------------|
+| `devbox shell <service>` | Open interactive shell in a service container | No |
+| `devbox url` | Show accessible URLs for services with port mappings | No |
+| `devbox wait <service> [--timeout]` | Wait for services to become healthy | Yes |
+| `devbox cp <service>:<path> <local-path>` | Copy files to/from service containers | No |
+| `devbox env [service] [--reveal]` | Show environment variables (masked by default) | No |
+| `devbox graph` | Visualize service dependency graph as ASCII tree | No |
+| `devbox snapshot gc` | Garbage collect old snapshots by age or count | No |
+| `devbox push [service] [--tag --all]` | Push service images to a registry | Yes |
+| `devbox top [--interval]` | Real-time CPU/memory dashboard for all services | Yes |
+
+### Notable New Flags
+
+| Flag | Description |
+|------|-------------|
+| `devbox init --from-git <repo>` | Clone a repo and auto-detect project configuration |
+| `devbox init --template <name>` | Generate a project from a built-in template (react-express-postgres, go-api, python-django, node-express, rust-axum) |
+| `devbox start --watch` | Hot-reload services when files change (fsnotify) |
+| `devbox build --no-cache` | Bypass Docker build cache |
+| `devbox build --pull` | Always pull base image before building |
+| `devbox snapshot export` | Export a snapshot to a tarball |
+| `devbox snapshot import` | Import a snapshot from a tarball |
+| `devbox env --reveal` | Show unmasked secret values |
+| `devbox wait --timeout <seconds>` | Custom health-check timeout |
+
 ## License
 
 MIT

@@ -3,7 +3,6 @@ package cmd
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -13,10 +12,9 @@ func TestInitCmd_CreatesDevboxYml(t *testing.T) {
 	os.Chdir(tmpDir)
 	defer os.Chdir(origDir)
 
-	rootCmd.SetArgs([]string{"init", "test-project"})
-	err := rootCmd.Execute()
+	err := runInit(initCmd, nil)
 	if err != nil {
-		t.Fatalf("init failed: %v", err)
+		t.Fatalf("runInit failed: %v", err)
 	}
 
 	if _, err := os.Stat(filepath.Join(tmpDir, "devbox.yml")); os.IsNotExist(err) {
@@ -30,14 +28,32 @@ func TestInitCmd_ExistingFile(t *testing.T) {
 	os.Chdir(tmpDir)
 	defer os.Chdir(origDir)
 
-	os.WriteFile(filepath.Join(tmpDir, "devbox.yml"), []byte("name: existing"), 0644)
+	os.WriteFile(filepath.Join(tmpDir, "devbox.yml"), []byte("name: existing\n"), 0644)
 
-	output := captureStdout(func() {
-		rootCmd.SetArgs([]string{"init", "test-project"})
-		rootCmd.Execute()
-	})
+	err := runInit(initCmd, nil)
+	// runInit returns nil (just warns) when file exists
+	if err != nil {
+		t.Fatalf("runInit should return nil when file exists, got: %v", err)
+	}
+	// Verify file wasn't overwritten
+	data, _ := os.ReadFile(filepath.Join(tmpDir, "devbox.yml"))
+	if string(data) != "name: existing\n" {
+		t.Errorf("existing file was overwritten: got %q", string(data))
+	}
+}
 
-	if !strings.Contains(output, "already exists") {
-		t.Errorf("expected 'already exists' message, got %q", output)
+func TestInitCmd_NamedProject(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(origDir)
+
+	err := runInit(initCmd, []string{"my-project"})
+	if err != nil {
+		t.Fatalf("runInit failed: %v", err)
+	}
+
+	if _, err := os.Stat(filepath.Join(tmpDir, "devbox.yml")); os.IsNotExist(err) {
+		t.Error("devbox.yml was not created")
 	}
 }
