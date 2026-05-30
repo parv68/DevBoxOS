@@ -23,8 +23,9 @@ Example:
   devbox exec web /bin/sh
   devbox exec db psql -U postgres
   devbox exec api npm test`,
-	Args: cobra.MinimumNArgs(2),
-	RunE: runExec,
+	Args:              cobra.MinimumNArgs(2),
+	ValidArgsFunction: completeServiceName,
+	RunE:              runExec,
 }
 
 func init() {

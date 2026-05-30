@@ -21,10 +21,11 @@ var (
 )
 
 var logsCmd = &cobra.Command{
-	Use:   "logs [service]",
-	Short: "View logs from a service",
-	Long:  `View, search, and export logs from a service. Supports both live streaming and historical logs.`,
-	RunE:  runLogs,
+	Use:               "logs [service]",
+	Short:             "View logs from a service",
+	Long:              `View, search, and export logs from a service. Supports both live streaming and historical logs.`,
+	ValidArgsFunction: completeServiceName,
+	RunE:              runLogs,
 }
 
 func init() {

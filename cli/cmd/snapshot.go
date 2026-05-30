@@ -5,9 +5,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"text/tabwriter"
+	"time"
 
 	"github.com/devboxos/devboxos/cli/internal/client"
+	"github.com/devboxos/devboxos/cli/internal/output"
 	"github.com/devboxos/devboxos/shared/config"
 	"github.com/devboxos/devboxos/shared/runtime/docker"
 	"github.com/devboxos/devboxos/shared/snapshot"
@@ -65,19 +68,142 @@ var (
 	snapshotName        string
 	snapshotForce       bool
 	snapshotIncludeLogs bool
+	snapshotKeepLast    int
+	snapshotOlderThan   string
 )
+
+var snapshotGCCmd = &cobra.Command{
+	Use:   "gc",
+	Short: "Garbage collect old snapshots",
+	Long: `Remove old snapshots based on retention policies.
+
+Examples:
+  devbox snapshot gc --keep-last 5
+  devbox snapshot gc --older-than 30d`,
+	RunE: runSnapshotGC,
+}
 
 func init() {
 	snapshotSaveCmd.Flags().StringVarP(&snapshotName, "name", "n", "", "Snapshot name")
 	snapshotSaveCmd.Flags().BoolVar(&snapshotIncludeLogs, "include-logs", false, "Include logs in snapshot")
 	snapshotLoadCmd.Flags().BoolVarP(&snapshotForce, "force", "f", false, "Force load (overwrite existing)")
+	snapshotGCCmd.Flags().IntVar(&snapshotKeepLast, "keep-last", 0, "Keep the last N snapshots, remove older ones")
+	snapshotGCCmd.Flags().StringVar(&snapshotOlderThan, "older-than", "", "Remove snapshots older than duration (e.g., 30d, 7d, 24h)")
 	snapshotCmd.AddCommand(snapshotSaveCmd)
 	snapshotCmd.AddCommand(snapshotLoadCmd)
 	snapshotCmd.AddCommand(snapshotListCmd)
 	snapshotCmd.AddCommand(snapshotDeleteCmd)
 	snapshotCmd.AddCommand(snapshotExportCmd)
 	snapshotCmd.AddCommand(snapshotImportCmd)
+	snapshotCmd.AddCommand(snapshotGCCmd)
 	rootCmd.AddCommand(snapshotCmd)
+}
+
+func runSnapshotGC(cmd *cobra.Command, args []string) error {
+	if snapshotKeepLast == 0 && snapshotOlderThan == "" {
+		return fmt.Errorf("specify at least one: --keep-last N or --older-than DURATION")
+	}
+
+	projectPath, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get working directory: %w", err)
+	}
+
+	rt := docker.NewDockerRuntime()
+	ctx := context.Background()
+	if err := rt.Connect(ctx); err != nil {
+		return fmt.Errorf("docker not available: %w", err)
+	}
+	defer rt.Close()
+
+	mgr := snapshot.NewManager(rt, projectPath)
+
+	infos, err := mgr.List()
+	if err != nil {
+		return fmt.Errorf("list snapshots: %w", err)
+	}
+
+	if len(infos) == 0 {
+		fmt.Println("No snapshots to clean")
+		return nil
+	}
+
+	sort.Slice(infos, func(i, j int) bool {
+		return infos[i].CreatedAt.After(infos[j].CreatedAt)
+	})
+
+	var toDelete []string
+
+	if snapshotKeepLast > 0 && len(infos) > snapshotKeepLast {
+		for _, info := range infos[snapshotKeepLast:] {
+			toDelete = append(toDelete, info.ID)
+		}
+	}
+
+	if snapshotOlderThan != "" {
+		duration, err := time.ParseDuration(snapshotOlderThan)
+		if err != nil {
+			duration = parseDurationDays(snapshotOlderThan)
+		}
+		cutoff := time.Now().Add(-duration)
+		for _, info := range infos {
+			if info.CreatedAt.Before(cutoff) {
+				alreadyQueued := false
+				for _, id := range toDelete {
+					if id == info.ID {
+						alreadyQueued = true
+						break
+					}
+				}
+				if !alreadyQueued {
+					toDelete = append(toDelete, info.ID)
+				}
+			}
+		}
+	}
+
+	if len(toDelete) == 0 {
+		fmt.Println("Nothing to clean")
+		return nil
+	}
+
+	var totalFreed int64
+	for _, id := range toDelete {
+		for _, info := range infos {
+			if info.ID == id {
+				totalFreed += info.SizeBytes
+				break
+			}
+		}
+		if err := mgr.Delete(id); err != nil {
+			output.Warning("Could not delete snapshot %s: %v", id[:8], err)
+		} else {
+			fmt.Printf("  Removed: %s\n", id[:8])
+		}
+	}
+
+	fmt.Printf("\n✓ Removed %d snapshot(s), freed %s\n", len(toDelete), formatBytes(totalFreed))
+	return nil
+}
+
+func parseDurationDays(s string) time.Duration {
+	if len(s) < 2 {
+		return 0
+	}
+	unit := s[len(s)-1:]
+	numStr := s[:len(s)-1]
+	var num int
+	fmt.Sscanf(numStr, "%d", &num)
+	switch unit {
+	case "d":
+		return time.Duration(num) * 24 * time.Hour
+	case "w":
+		return time.Duration(num) * 7 * 24 * time.Hour
+	case "h":
+		return time.Duration(num) * time.Hour
+	default:
+		return 0
+	}
 }
 
 func runSnapshotSave(cmd *cobra.Command, args []string) error {

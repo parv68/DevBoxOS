@@ -14,11 +14,12 @@ import (
 )
 
 var buildCmd = &cobra.Command{
-	Use:   "build [service]",
-	Short: "Build service images from Dockerfile",
-	Long:  `Build Docker images for services defined in devbox.yml.`,
-	Args:  cobra.MaximumNArgs(1),
-	RunE:  runBuild,
+	Use:               "build [service]",
+	Short:             "Build service images from Dockerfile",
+	Long:              `Build Docker images for services defined in devbox.yml.`,
+	Args:              cobra.MaximumNArgs(1),
+	ValidArgsFunction: completeServiceName,
+	RunE:              runBuild,
 }
 
 var (
