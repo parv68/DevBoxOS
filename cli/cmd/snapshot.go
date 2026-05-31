@@ -25,8 +25,9 @@ var snapshotCmd = &cobra.Command{
 }
 
 var snapshotSaveCmd = &cobra.Command{
-	Use:   "save",
+	Use:   "save [name]",
 	Short: "Save a snapshot of the current environment",
+	Args:  cobra.MaximumNArgs(1),
 	RunE:  runSnapshotSave,
 }
 
@@ -212,6 +213,9 @@ func runSnapshotSave(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("get working directory: %w", err)
 	}
 
+	if snapshotName == "" && len(args) > 0 {
+		snapshotName = args[0]
+	}
 	if snapshotName == "" {
 		snapshotName = fmt.Sprintf("%s-%s", filepath.Base(projectPath), "latest")
 	}

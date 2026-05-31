@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -229,6 +230,38 @@ func (m *Manager) Export(snapshotID, outputPath string, statusChan chan<- string
 	tarWriter := tar.NewWriter(gzWriter)
 	defer tarWriter.Close()
 
+	// Write snapshot metadata so import can recover the snapshot ID.
+	idHeader := &tar.Header{
+		Name:     "snapshot_id",
+		Size:     int64(len(snapshotID)),
+		Mode:     0644,
+		Typeflag: tar.TypeReg,
+	}
+	if err := tarWriter.WriteHeader(idHeader); err != nil {
+		return fmt.Errorf("write snapshot_id header: %w", err)
+	}
+	if _, err := tarWriter.Write([]byte(snapshotID)); err != nil {
+		return fmt.Errorf("write snapshot_id: %w", err)
+	}
+
+	// Include manifest JSON in the tarball so Import can reconstruct it.
+	manifestData, err := json.MarshalIndent(manifest, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal manifest: %w", err)
+	}
+	manifestHeader := &tar.Header{
+		Name:     "snapshot/manifest.json",
+		Size:     int64(len(manifestData)),
+		Mode:     0644,
+		Typeflag: tar.TypeReg,
+	}
+	if err := tarWriter.WriteHeader(manifestHeader); err != nil {
+		return fmt.Errorf("write manifest header: %w", err)
+	}
+	if _, err := tarWriter.Write(manifestData); err != nil {
+		return fmt.Errorf("write manifest data: %w", err)
+	}
+
 	snapshotDir := m.store.SnapshotDir(snapshotID)
 
 	err = filepath.Walk(snapshotDir, func(path string, info os.FileInfo, err error) error {
@@ -308,14 +341,21 @@ func (m *Manager) Import(tarballPath string, statusChan chan<- string) error {
 		}
 
 		name := header.Name
+
+		// Read snapshot_id first — this is a plain-text entry written by Export.
+		if name == "snapshot_id" {
+			idBytes := make([]byte, header.Size)
+			if _, err := io.ReadFull(tarReader, idBytes); err != nil {
+				return fmt.Errorf("read snapshot_id: %w", err)
+			}
+			snapshotID = string(idBytes)
+			continue
+		}
+
 		if strings.HasPrefix(name, "snapshot/") {
 			relPath := strings.TrimPrefix(name, "snapshot/")
 			if relPath == "" {
 				continue
-			}
-
-			if strings.HasSuffix(relPath, ".json") && snapshotID == "" {
-				snapshotID = strings.TrimSuffix(relPath, ".json")
 			}
 
 			destPath := filepath.Join(m.store.SnapshotDir(snapshotID), relPath)
@@ -345,10 +385,23 @@ func (m *Manager) Import(tarballPath string, statusChan chan<- string) error {
 	}
 
 	if snapshotID == "" {
-		return fmt.Errorf("no snapshot manifest found in tarball")
+		return fmt.Errorf("no snapshot_id entry found in tarball")
 	}
 
-	statusChan <- fmt.Sprintf("Snapshot imported: %s", snapshotID[:8])
+	// Load the extracted manifest and save it to the store so it shows up in listings.
+	manifestPath := filepath.Join(m.store.SnapshotDir(snapshotID), "manifest.json")
+	if manifestData, err := os.ReadFile(manifestPath); err == nil {
+		var manifest Manifest
+		if err := json.Unmarshal(manifestData, &manifest); err == nil {
+			if err := m.store.SaveManifest(&manifest); err != nil {
+				return fmt.Errorf("save imported manifest: %w", err)
+			}
+			statusChan <- fmt.Sprintf("Snapshot imported: %s", snapshotID[:8])
+			return nil
+		}
+	}
+
+	statusChan <- fmt.Sprintf("Snapshot imported (no manifest): %s", snapshotID[:8])
 	return nil
 }
 

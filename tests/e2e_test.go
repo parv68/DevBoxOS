@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-func fixture(t *testing.T, name string) string {
+func fixture(t testing.TB, name string) string {
 	t.Helper()
 	wd, err := os.Getwd()
 	if err != nil {
@@ -22,7 +22,7 @@ func fixture(t *testing.T, name string) string {
 	return filepath.Join(wd, "fixtures", name)
 }
 
-func findCLI(t *testing.T) string {
+func findCLI(t testing.TB) string {
 	t.Helper()
 
 	candidates := []string{
@@ -52,7 +52,7 @@ func devboxCmd(cli string, args ...string) *exec.Cmd {
 	return exec.Command(cli, args...)
 }
 
-func writeFixture(t *testing.T, dir, name string) {
+func writeFixture(t testing.TB, dir, name string) {
 	t.Helper()
 	data, err := os.ReadFile(fixture(t, name))
 	if err != nil {
@@ -441,6 +441,13 @@ func TestE2E_SnapshotRoundtrip(t *testing.T) {
 	}
 	t.Logf("snapshot save: %s", saveOut)
 
+	// Extract snapshot ID from save output: "Creating <name> (<id>)..."
+	snapID := extractSnapshotID(string(saveOut))
+	if snapID == "" {
+		t.Fatal("could not extract snapshot ID from save output")
+	}
+	t.Logf("snapshot ID: %s", snapID)
+
 	// 2. List
 	listCmd := devboxCmd(cli, "snapshot", "list")
 	listCmd.Dir = tmpDir
@@ -452,9 +459,9 @@ func TestE2E_SnapshotRoundtrip(t *testing.T) {
 		t.Errorf("snapshot list should contain %q, got: %s", snapshotName, listOut)
 	}
 
-	// 3. Export
+	// 3. Export (by ID, not name)
 	exportPath := filepath.Join(tmpDir, "snapshot-export.tar")
-	exportCmd := devboxCmd(cli, "snapshot", "export", snapshotName, exportPath)
+	exportCmd := devboxCmd(cli, "snapshot", "export", snapID, exportPath)
 	exportCmd.Dir = tmpDir
 	exportOut, err := exportCmd.CombinedOutput()
 	if err != nil {
@@ -465,8 +472,8 @@ func TestE2E_SnapshotRoundtrip(t *testing.T) {
 		t.Fatal("snapshot export did not create tarball")
 	}
 
-	// 4. Delete
-	delCmd := devboxCmd(cli, "snapshot", "delete", snapshotName)
+	// 4. Delete (by ID)
+	delCmd := devboxCmd(cli, "snapshot", "delete", snapID)
 	delCmd.Dir = tmpDir
 	delOut, err := delCmd.CombinedOutput()
 	if err != nil {
@@ -490,8 +497,8 @@ func TestE2E_SnapshotRoundtrip(t *testing.T) {
 	if err != nil {
 		t.Fatalf("snapshot list (2) failed: %v\n%s", err, list2Out)
 	}
-	if !strings.Contains(string(list2Out), "e2e") && !strings.Contains(string(list2Out), snapshotName) {
-		t.Errorf("snapshot list should contain imported snapshot, got: %s", list2Out)
+	if !strings.Contains(string(list2Out), snapID[:8]) {
+		t.Errorf("snapshot list should contain imported snapshot ID, got: %s", list2Out)
 	}
 }
 
@@ -550,4 +557,24 @@ func TestE2E_HelpAllSubcommands(t *testing.T) {
 			}
 		})
 	}
+}
+
+// extractSnapshotID extracts the hex snapshot ID from save output like:
+// "Creating my-snap (a1b2c3d4)..."
+func extractSnapshotID(output string) string {
+	start := strings.Index(output, "(")
+	if start < 0 {
+		return ""
+	}
+	start++
+	end := strings.Index(output[start:], ")")
+	if end < 0 {
+		return ""
+	}
+	id := output[start : start+end]
+	// Should be a hex hash
+	if len(id) < 6 {
+		return ""
+	}
+	return id
 }

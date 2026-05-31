@@ -11,6 +11,12 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
+        go-version: ["1.22"]
+        include:
+          - os: ubuntu-latest
+            go-version: "1.23"
+          - os: ubuntu-latest
+            go-version: "1.24"
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -18,7 +24,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: ${{ matrix.go-version }}
           check-latest: true
 
       - name: Build shared
@@ -70,3 +76,44 @@ jobs:
 
       - name: E2E smoke tests
         run: go test -tags=e2e -count=1 -short ./tests/... -timeout 300s -v
+
+  bench:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          check-latest: true
+
+      - name: Build CLI
+        run: go build -o cli/devboxos ./cli
+
+      - name: Run benchmarks
+        run: go test -tags=e2e -bench=. -benchtime=1x ./tests/... -run=^$ -timeout 600s -v 2>&1 | tee bench-results.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: bench-results
+          path: bench-results.txt
+
+  security:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+          check-latest: true
+
+      - name: Build CLI
+        run: go build -o cli/devboxos ./cli
+
+      - name: Security tests
+        run: go test -tags=e2e -count=1 -short ./tests/... -run TestSecurity -timeout 300s -v

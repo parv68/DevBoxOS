@@ -1,4 +1,4 @@
-.PHONY: all build test test-race test-e2e test-integration clean lint vet fmt
+.PHONY: all build test test-race test-e2e test-e2e-short test-bench test-security test-integration clean lint vet fmt
 
 GO ?= go
 GOFLAGS ?= -mod=mod
@@ -32,6 +32,16 @@ test-e2e-short:
 	rm -f cli/devboxos cli/devboxos.exe
 	$(GO) build -o $(CLI_BIN) ./cli
 	$(GO) test $(GOFLAGS) -tags=e2e -count=1 -short ./tests/... -timeout 300s -v
+
+test-bench:
+	rm -f cli/devboxos cli/devboxos.exe
+	$(GO) build -o $(CLI_BIN) ./cli
+	$(GO) test $(GOFLAGS) -tags=e2e -bench=. -benchtime=1x ./tests/... -run=^\$$ -timeout 600s -v 2>&1 | tee bench-results.txt
+
+test-security:
+	rm -f cli/devboxos cli/devboxos.exe
+	$(GO) build -o $(CLI_BIN) ./cli
+	$(GO) test $(GOFLAGS) -tags=e2e -count=1 -short ./tests/... -run TestSecurity -timeout 300s -v
 
 test-verbose:
 	$(GO) test $(GOFLAGS) -v -count=1 ./shared/... ./engine/... ./cli/... -timeout 180s

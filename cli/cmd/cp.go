@@ -43,16 +43,59 @@ func runCP(cmd *cobra.Command, args []string) error {
 
 	ctx := context.Background()
 
-	srcIsRemote := strings.Contains(src, ":")
-	dstIsRemote := strings.Contains(dst, ":")
+	srcIsRemote := isRemoteRef(src)
+	dstIsRemote := isRemoteRef(dst)
 
 	if srcIsRemote && !dstIsRemote {
+		// Guard: local destination must be within the project directory
+		if err := checkWithinProject(dst); err != nil {
+			return err
+		}
 		return copyFromContainer(ctx, dockerClient, src, dst)
 	} else if !srcIsRemote && dstIsRemote {
 		return copyToContainer(ctx, dockerClient, src, dst)
 	}
 
 	return fmt.Errorf("usage: devbox cp <service>:<path> <local-path> or devbox cp <local-path> <service>:<path>")
+}
+
+func checkWithinProject(localPath string) error {
+	wd, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("get project directory: %w", err)
+	}
+	absLocal, err := filepath.Abs(localPath)
+	if err != nil {
+		return fmt.Errorf("resolve local path: %w", err)
+	}
+	absProject, err := filepath.Abs(wd)
+	if err != nil {
+		return fmt.Errorf("resolve project path: %w", err)
+	}
+	// Ensure the resolved local path is inside the project directory.
+	rel, err := filepath.Rel(absProject, absLocal)
+	if err != nil {
+		return fmt.Errorf("path traversal check: %w", err)
+	}
+	if rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return fmt.Errorf("destination path %q is outside the project directory", localPath)
+	}
+	return nil
+}
+
+// isRemoteRef checks whether a string looks like service:path rather than a local path.
+// On Windows, local absolute paths contain a colon (e.g. C:\) so we must rule those out.
+func isRemoteRef(ref string) bool {
+	colonIdx := strings.Index(ref, ":")
+	if colonIdx < 0 {
+		return false
+	}
+	// If the colon is at position 1 and is followed by '/' or '\', it's a Windows drive letter.
+	if colonIdx == 1 && len(ref) > 2 && (ref[2] == '/' || ref[2] == '\\') {
+		return false
+	}
+	// Otherwise it's a service:path reference.
+	return true
 }
 
 func parseRemoteRef(ref string) (serviceName, path string, err error) {

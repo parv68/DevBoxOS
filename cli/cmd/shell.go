@@ -3,13 +3,13 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/signal"
 
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
-	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/spf13/cobra"
 )
 
@@ -97,7 +97,7 @@ func runShell(cmd *cobra.Command, args []string) error {
 	}()
 
 	fmt.Fprintf(os.Stderr, "Opening shell (%s) in service: %s\n", shellCmdUsed, serviceName)
-	_, err = stdcopy.StdCopy(os.Stdout, os.Stderr, attachResp.Reader)
+	_, err = io.Copy(os.Stdout, attachResp.Reader)
 	if err != nil {
 		return fmt.Errorf("shell session: %w", err)
 	}
