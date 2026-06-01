@@ -15,6 +15,9 @@ import (
 )
 
 func TestSnapshot_VolumeExportImport(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Docker integration test in short mode")
+	}
 	if os.Getenv("DOCKER_TEST_PULL") == "" {
 		t.Skip("Set DOCKER_TEST_PULL=1 to run integration tests")
 	}

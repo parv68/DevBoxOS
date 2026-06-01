@@ -396,12 +396,12 @@ func (m *Manager) Import(tarballPath string, statusChan chan<- string) error {
 			if err := m.store.SaveManifest(&manifest); err != nil {
 				return fmt.Errorf("save imported manifest: %w", err)
 			}
-			statusChan <- fmt.Sprintf("Snapshot imported: %s", snapshotID[:8])
+			statusChan <- fmt.Sprintf("Snapshot imported: %.8s", snapshotID)
 			return nil
 		}
 	}
 
-	statusChan <- fmt.Sprintf("Snapshot imported (no manifest): %s", snapshotID[:8])
+	statusChan <- fmt.Sprintf("Snapshot imported (no manifest): %.8s", snapshotID)
 	return nil
 }
 

@@ -100,7 +100,7 @@ func DockerSocketPath() string {
 	if IsWindows() {
 		return "npipe:////./pipe/docker_engine"
 	}
-	return "/var/run/docker.sock"
+	return "unix:///var/run/docker.sock"
 }
 
 // DefaultEnginePort returns the default TCP port for the engine.

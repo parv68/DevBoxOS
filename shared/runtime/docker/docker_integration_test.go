@@ -12,6 +12,10 @@ import (
 )
 
 func TestDockerRuntime_Connect(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Docker integration test in short mode")
+	}
+
 	rt := NewDockerRuntime()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -23,6 +27,10 @@ func TestDockerRuntime_Connect(t *testing.T) {
 }
 
 func TestDockerRuntime_Check(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Docker integration test in short mode")
+	}
+
 	rt := NewDockerRuntime()
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -38,6 +46,9 @@ func TestDockerRuntime_Check(t *testing.T) {
 }
 
 func TestDockerRuntime_PullAndRunContainer(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Docker integration test in short mode")
+	}
 	if os.Getenv("DOCKER_TEST_PULL") == "" {
 		t.Skip("Set DOCKER_TEST_PULL=1 to run pull tests")
 	}
@@ -97,6 +108,10 @@ func TestDockerRuntime_PullAndRunContainer(t *testing.T) {
 }
 
 func TestDockerRuntime_NetworkLifecycle(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Docker integration test in short mode")
+	}
+
 	rt := NewDockerRuntime()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -143,6 +158,10 @@ func TestDockerRuntime_NetworkLifecycle(t *testing.T) {
 }
 
 func TestDockerRuntime_VolumeLifecycle(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Docker integration test in short mode")
+	}
+
 	rt := NewDockerRuntime()
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
@@ -189,6 +208,9 @@ func TestDockerRuntime_VolumeLifecycle(t *testing.T) {
 }
 
 func TestDockerRuntime_StreamLogs(t *testing.T) {
+	if testing.Short() {
+		t.Skip("Skipping Docker integration test in short mode")
+	}
 	if os.Getenv("DOCKER_TEST_PULL") == "" {
 		t.Skip("Set DOCKER_TEST_PULL=1 to run log tests")
 	}
