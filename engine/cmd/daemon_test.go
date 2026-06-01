@@ -10,6 +10,7 @@ import (
 
 	"github.com/devboxos/devboxos/engine/internal/state"
 	pb "github.com/devboxos/devboxos/engine/proto"
+	"github.com/devboxos/devboxos/shared/runtime/docker"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/test/bufconn"
@@ -266,6 +267,15 @@ func TestServer_Logs_NoDocker(t *testing.T) {
 }
 
 func TestServer_Reset_NoDocker(t *testing.T) {
+	// GitHub CI runners have Docker pre-installed, so skip this test
+	// when Docker is actually available.
+	rt := docker.NewDockerRuntime()
+	if err := rt.Connect(context.Background()); err == nil {
+		rt.Close()
+		t.Skip("Docker is available — skipping NoDocker test")
+	}
+	rt.Close()
+
 	projectDir := setupTestProject(t)
 	_, client, cleanup := setupTestServer(t)
 	defer cleanup()
