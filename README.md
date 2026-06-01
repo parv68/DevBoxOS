@@ -1,107 +1,660 @@
 # DevBoxOS
 
-Universal Development Sandbox — spin up fully configured, reproducible development environments with a single command.
+**Universal Development Sandbox** — spin up fully configured, reproducible development environments with a single command.
+
+[![CI](https://github.com/parv68/DevBoxOS/actions/workflows/ci.yml/badge.svg)](https://github.com/parv68/DevBoxOS/actions/workflows/ci.yml)
+[![Release](https://github.com/parv68/DevBoxOS/actions/workflows/release.yml/badge.svg)](https://github.com/parv68/DevBoxOS/actions/workflows/release.yml)
+![Go Version](https://img.shields.io/badge/go-1.25%2B-blue)
+![Platform](https://img.shields.io/badge/platform-linux%20%7C%20macos%20%7C%20windows-lightgrey)
+![License](https://img.shields.io/badge/license-MIT-green)
+
+---
+
+## What is DevBoxOS?
+
+DevBoxOS is a local-first development environment manager. It lets you define your project's services (databases, caches, web servers, etc.) in a single `devbox.yml` file, then spin them all up with one command — no Docker Compose, no Kubernetes, no cloud dependencies.
+
+```bash
+# One command to start your entire dev environment
+devboxos start
+```
+
+### Why DevBoxOS?
+
+| Problem | DevBoxOS Solution |
+|---------|-------------------|
+| "It works on my machine" | Reproducible environments from a single config file |
+| "I need 5 terminals to run my stack" | One command starts everything |
+| "Docker Compose is verbose" | Smart defaults, auto-detection, simpler syntax |
+| "My services depend on each other" | Automatic dependency resolution with health checks |
+| "I need to snapshot my DB state" | Built-in snapshot save/load/export/import |
+| "Secrets in env files leak" | Encrypted secrets with age (X25519 + ChaCha20-Poly1305) |
+
+---
+
+## Features
+
+- ✅ **Zero cloud** — Everything runs locally via Docker
+- ✅ **Single config** — `devbox.yml` defines your entire stack
+- ✅ **Dependency resolution** — Services start in the right order
+- ✅ **Health checks** — Waits for services to be ready
+- ✅ **Hot reload** — Watch files and auto-restart services
+- ✅ **Snapshots** — Save, export, import, and restore environment state
+- ✅ **Encrypted secrets** — age-encrypted secrets stored in your project
+- ✅ **Shell access** — Interactive shell into any service container
+- ✅ **File copy** — Copy files to/from containers (`devboxos cp`)
+- ✅ **Resource monitoring** — Real-time CPU/memory dashboard
+- ✅ **Log management** — Persistent logs with search, tail, and rotation
+- ✅ **Diagnostics** — Comprehensive health checks (`devboxos doctor`)
+- ✅ **Plugin system** — Hook-based lifecycle plugins
+- ✅ **Cross-platform** — Windows, macOS, Linux
+- ✅ **Auto-detection** — Scan a project and generate config automatically
+- ✅ **Docker Compose import/export** — Migrate between formats
+- ✅ **No daemon dependency** — Most commands fall back to direct Docker SDK calls
+
+---
+
+## Architecture
+
+```
+┌────────────────┐     gRPC (TCP)     ┌────────────────┐     Docker API     ┌──────────┐
+│  devboxos CLI  │ ─────────────────→ │  Engine Daemon │ ────────────────→ │  Docker  │
+│  (cobra CLI)   │ ←──────────────── │  (daemon.go)   │ ←──────────────── │  Engine  │
+└────────────────┘                   └────────────────┘                   └──────────┘
+       │                                      │
+       │  (direct Docker SDK fallback)         │
+       └──────────────────────────────────────┘
+```
+
+The CLI talks to the engine daemon via gRPC over TCP (`127.0.0.1:51000`). If the engine isn't running, most commands fall back to calling the Docker SDK directly.
+
+### Project Structure
+
+```
+devboxos/
+├── cli/               # CLI (cobra-based)
+│   ├── cmd/           #   Command implementations
+│   └── internal/      #   gRPC client, output, autodetect
+├── engine/            # Engine daemon (gRPC server)
+│   ├── cmd/           #   Entry point + gRPC handlers
+│   ├── internal/      #   Networking, orchestrator, state
+│   └── proto/         #   gRPC proto definitions
+├── shared/            # Cross-cutting packages
+│   ├── config/        #   Config parsing, validation, auto-detection
+│   ├── diagnostics/   #   Health checks
+│   ├── logging/       #   Persistent log storage
+│   ├── platform/      #   OS detection
+│   ├── plugins/       #   Hook system
+│   ├── runtime/       #   Docker SDK wrapper
+│   ├── secrets/       #   age encryption
+│   └── snapshot/      #   Environment snapshots
+└── tests/             # E2E, benchmark, and security tests
+```
+
+---
 
 ## Installation
 
-### From source
+### Linux
+
+**Option 1 — Download the release archive**
 
 ```bash
-# Build the CLI
-go build -o devboxos ./cli
+# Download the latest release
+curl -LO https://github.com/parv68/DevBoxOS/releases/latest/download/devboxos_linux_amd64.tar.gz
 
-# (Optional) Build the engine daemon
+# Extract
+tar xzf devboxos_linux_amd64.tar.gz
+
+# Install
+sudo mv devboxos devbox-engine /usr/local/bin/
+```
+
+**Option 2 — Install script**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/parv68/DevBoxOS/main/scripts/install.sh | sh
+```
+
+**Option 3 — Build from source**
+
+```bash
+# Prerequisites: Go 1.25+, Docker
+git clone https://github.com/parv68/DevBoxOS.git
+cd DevBoxOS
+
+# Build CLI and engine
+go build -o devboxos ./cli
 go build -o devbox-engine ./engine/cmd
 
-# Move to PATH
-mv devboxos /usr/local/bin/
+# Install
+sudo mv devboxos devbox-engine /usr/local/bin/
 ```
 
-### Using GoReleaser (tagged releases)
+### macOS
+
+**Option 1 — Download the release archive (Intel)**
 
 ```bash
-curl -LO https://github.com/parv68/DevBoxOS/releases/latest/download/devboxos_linux_amd64.tar.gz
-tar xzf devboxos_linux_amd64.tar.gz
-sudo mv devboxos /usr/local/bin/
+curl -LO https://github.com/parv68/DevBoxOS/releases/latest/download/devboxos_darwin_amd64.tar.gz
+tar xzf devboxos_darwin_amd64.tar.gz
+sudo mv devboxos devbox-engine /usr/local/bin/
 ```
+
+**Option 1 — Download the release archive (Apple Silicon)**
+
+```bash
+curl -LO https://github.com/parv68/DevBoxOS/releases/latest/download/devboxos_darwin_arm64.tar.gz
+tar xzf devboxos_darwin_arm64.tar.gz
+sudo mv devboxos devbox-engine /usr/local/bin/
+```
+
+**Option 2 — Install script**
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/parv68/DevBoxOS/main/scripts/install.sh | sh
+```
+
+**Option 3 — Build from source**
+
+```bash
+git clone https://github.com/parv68/DevBoxOS.git
+cd DevBoxOS
+go build -o devboxos ./cli
+go build -o devbox-engine ./engine/cmd
+sudo mv devboxos devbox-engine /usr/local/bin/
+```
+
+### Windows
+
+**Option 1 — Download the release archive**
+
+```powershell
+# Download
+Invoke-WebRequest -Uri "https://github.com/parv68/DevBoxOS/releases/latest/download/devboxos_windows_amd64.zip" -OutFile "devboxos.zip"
+
+# Extract
+Expand-Archive -Path "devboxos.zip" -DestinationPath "devboxos"
+
+# Add to PATH
+$env:Path += ";$pwd\devboxos"
+```
+
+**Option 2 — Build from source**
+
+```powershell
+git clone https://github.com/parv68/DevBoxOS.git
+cd DevBoxOS
+go build -o devboxos.exe ./cli
+go build -o devbox-engine.exe ./engine/cmd
+```
+
+### Prerequisites
+
+- **Docker** — DevBoxOS manages Docker containers. Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) for your platform.
+- **Go 1.25+** — Only needed if building from source.
+
+---
 
 ## Quick Start
 
+### 1. Start the engine daemon
+
 ```bash
-# Initialize a new project
-cd my-project
-devboxos init
-
-# Validate the generated config
-devboxos validate
-
-# Start all services (requires engine daemon)
+# Start the engine in the background
 devbox-engine &
-devboxos start
 
-# View running services
-devboxos status
-
-# View logs
-devboxos logs web
-
-# Stop everything
-devboxos stop
-
-# Run diagnostics
-devboxos doctor
+# Or run it as a foreground daemon
+devbox-engine
 ```
 
+### 2. Initialize a project
+
+```bash
+cd my-project
+
+# Auto-detect and generate devbox.yml
+devboxos init
+
+# Or use a template
+devboxos init --template react-express-postgres
+
+# Or clone a repo and auto-detect
+devboxos init --from-git https://github.com/user/repo.git
+```
+
+### 3. Validate your config
+
+```bash
+devboxos validate
+```
+
+### 4. Start all services
+
+```bash
+devboxos start
+```
+
+### 5. Check status
+
+```bash
+devboxos status
+```
+
+### 6. View logs
+
+```bash
+devboxos logs web
+devboxos logs web --tail 50
+devboxos logs web --follow
+```
+
+### 7. Stop everything
+
+```bash
+devboxos stop
+```
+
+---
+
 ## CLI Commands
+
+### Command Reference
 
 | Command | Description | Engine Required |
 |---------|-------------|----------------|
 | `devboxos init` | Generate devbox.yml by scanning project | No |
+| `devboxos init --from-git <repo>` | Clone a repo and auto-detect configuration | No |
+| `devboxos init --template <name>` | Generate a project from a built-in template | No |
+| `devboxos init compose-import` | Import docker-compose.yml → devbox.yml | No |
+| `devboxos init compose-export` | Export devbox.yml → docker-compose.yml | No |
 | `devboxos validate` | Validate devbox.yml configuration | No |
 | `devboxos start` | Start all services | Yes |
-| `devboxos stop [service]` | Stop services | Yes |
-| `devboxos status` | Show environment status | Yes |
-| `devboxos logs <service>` | View service logs | No (local) / Yes (follow) |
-| `devboxos reset` | Tear down and rebuild | Yes |
-| `devboxos doctor` | Run diagnostics | Yes (via engine) / No (fallback) |
-| `devboxos build [service]` | Build service images | No |
-| `devboxos destroy` | Remove all managed containers | No |
-| `devboxos exec <service> <cmd>` | Execute command in a service | No |
+| `devboxos start --watch` | Start with hot-reload on file changes | Yes |
+| `devboxos stop [service]` | Stop all services or a specific service | Yes |
+| `devboxos status` | Show environment status and service health | Yes |
 | `devboxos ps` | List running projects and services | No |
+| `devboxos logs <service>` | View service logs | No (local) / Yes (follow) |
+| `devboxos logs <service> --follow` | Stream logs in real-time | Yes |
+| `devboxos logs <service> --tail <n>` | Show last N log lines | No |
+| `devboxos logs <service> --search <pattern>` | Search logs with regex | No |
+| `devboxos logs <service> --export <file>` | Export logs to file | No |
+| `devboxos build [service]` | Build service images | No |
+| `devboxos build --no-cache` | Bypass Docker build cache | No |
+| `devboxos build --pull` | Always pull base images | No |
+| `devboxos exec <service> <cmd>` | Execute a command in a service container | No |
+| `devboxos shell <service>` | Open an interactive shell in a container | No |
+| `devboxos cp <service>:<path> <local-path>` | Copy files from a container to local | No |
+| `devboxos cp <local-path> <service>:<path>` | Copy files from local to a container | No |
+| `devboxos env [service]` | Show environment variables (masked) | No |
+| `devboxos env [service] --reveal` | Show environment variables (unmasked) | No |
+| `devboxos url` | Show accessible URLs for services with ports | No |
+| `devboxos graph` | Visualize service dependency graph | No |
+| `devboxos doctor` | Run system diagnostics | Yes (engine) / No (fallback) |
+| `devboxos reset` | Tear down and rebuild all services | Yes |
+| `devboxos destroy` | Remove all managed containers and networks | No |
 | `devboxos prune` | Remove orphaned containers | No |
-| `devboxos shell <service>` | Open interactive shell in a service container | No |
-| `devboxos url` | Show accessible URLs for services with port mappings | No |
-| `devboxos wait <service> [--timeout]` | Wait for services to become healthy | Yes |
-| `devboxos cp <service>:<path> <local-path>` | Copy files to/from service containers | No |
-| `devboxos env [service] [--reveal]` | Show environment variables (masked by default) | No |
-| `devboxos graph` | Visualize service dependency graph as ASCII tree | No |
-| `devboxos top [--interval]` | Real-time CPU/memory dashboard for all services | Yes |
-| `devboxos push [service] [--tag --all]` | Push service images to a registry | Yes |
-| `devboxos snapshot [save\|load\|list\|delete\|export\|import\|gc]` | Manage environment snapshots | No (fallback) |
-| `devboxos secrets [set\|get\|list\|delete\|rotate]` | Manage encrypted secrets | No (fallback) |
-| `devboxos init compose-import` | Import docker-compose.yml → devbox config | No |
-| `devboxos init compose-export` | Export devbox config → docker-compose.yml | No |
-| `devboxos upgrade` | Upgrade to latest version | No |
-| `devboxos config` | View or set CLI configuration | No |
-| `devboxos version` | Show version | No |
-| `devboxos completion [bash\|zsh\|fish\|powershell]` | Generate shell completions | No |
+| `devboxos push [service]` | Push service images to a registry | Yes |
+| `devboxos push --tag <tag>` | Tag image before pushing | Yes |
+| `devboxos push --all` | Push all service images | Yes |
+| `devboxos top` | Real-time CPU/memory dashboard | Yes |
+| `devboxos top --interval <sec>` | Custom refresh interval | Yes |
+| `devboxos wait <service>` | Wait for a service to become healthy | Yes |
+| `devboxos wait --timeout <sec>` | Custom health-check timeout | Yes |
 
-### Notable Flags
+### Snapshot Commands
 
-| Flag | Description |
-|------|-------------|
-| `devboxos init --from-git <repo>` | Clone a repo and auto-detect project configuration |
-| `devboxos init --template <name>` | Generate a project from a built-in template (react-express-postgres, go-api, python-django, node-express, rust-axum) |
-| `devboxos start --watch` | Hot-reload services when files change (fsnotify) |
-| `devboxos build --no-cache` | Bypass Docker build cache |
-| `devboxos build --pull` | Always pull base image before building |
-| `devboxos snapshot export <id> <file>` | Export a snapshot to a tarball |
-| `devboxos snapshot import <file>` | Import a snapshot from a tarball |
-| `devboxos snapshot gc [--keep <n>] [--older-than <duration>]` | Garbage collect old snapshots |
-| `devboxos env --reveal` | Show unmasked secret values |
-| `devboxos wait --timeout <seconds>` | Custom health-check timeout |
+| Command | Description | Engine Required |
+|---------|-------------|----------------|
+| `devboxos snapshot save <name>` | Create a snapshot of the current environment | No (fallback) |
+| `devboxos snapshot list` | List all snapshots | No (fallback) |
+| `devboxos snapshot load <id>` | Restore environment from a snapshot | No (fallback) |
+| `devboxos snapshot delete <id>` | Delete a snapshot | No (fallback) |
+| `devboxos snapshot export <id> <file>` | Export a snapshot to a tarball | No (fallback) |
+| `devboxos snapshot import <file>` | Import a snapshot from a tarball | No (fallback) |
+| `devboxos snapshot gc` | Garbage collect old snapshots | No (fallback) |
+| `devboxos snapshot gc --keep <n>` | Keep only the N most recent snapshots | No (fallback) |
+| `devboxos snapshot gc --older-than <duration>` | Remove snapshots older than duration | No (fallback) |
+
+### Secrets Commands
+
+| Command | Description | Engine Required |
+|---------|-------------|----------------|
+| `devboxos secrets set <key> <value>` | Set an encrypted secret | No (fallback) |
+| `devboxos secrets get <key>` | Retrieve a secret value | No (fallback) |
+| `devboxos secrets list` | List all secret keys | No (fallback) |
+| `devboxos secrets delete <key>` | Delete a secret | No (fallback) |
+| `devboxos secrets rotate` | Re-encrypt all secrets with a new key | No (fallback) |
+
+### Utility Commands
+
+| Command | Description | Engine Required |
+|---------|-------------|----------------|
+| `devboxos config` | View all configuration | No |
+| `devboxos config <key>` | View a single config value | No |
+| `devboxos config <key> <value>` | Set a config value | No |
+| `devboxos version` | Show version and build info | No |
+| `devboxos upgrade` | Upgrade to the latest version | No |
+| `devboxos completion bash` | Generate bash completion script | No |
+| `devboxos completion zsh` | Generate zsh completion script | No |
+| `devboxos completion fish` | Generate fish completion script | No |
+| `devboxos completion powershell` | Generate PowerShell completion script | No |
+
+---
+
+## Detailed Command Guide
+
+### `devboxos init` — Project Initialization
+
+```bash
+# Auto-detect project type and generate devbox.yml
+cd my-project
+devboxos init
+
+# Use a built-in template
+devboxos init --template react-express-postgres
+devboxos init --template go-api
+devboxos init --template python-django
+devboxos init --template node-express
+devboxos init --template rust-axum
+
+# Clone a repo and auto-detect
+devboxos init --from-git https://github.com/user/project.git
+
+# Import from Docker Compose
+devboxos init compose-import
+
+# Export to Docker Compose
+devboxos init compose-export
+```
+
+### `devboxos start` — Starting Services
+
+```bash
+# Start all services with dependency resolution
+devboxos start
+
+# Start with file watching (hot reload)
+devboxos start --watch
+```
+
+When you run `devboxos start`, the engine:
+1. Resolves the dependency graph
+2. Builds any images with `build` config
+3. Creates the isolated Docker network
+4. Starts services in dependency order
+5. Waits for health checks to pass
+6. Attaches log collectors
+
+### `devboxos snapshot` — Environment Snapshots
+
+Snapshots let you save and restore your entire development environment state, including container images, volumes, networks, and secrets.
+
+```bash
+# Save the current state
+devboxos snapshot save my-db-state
+
+# List all snapshots
+devboxos snapshot list
+
+# Export a snapshot to share with your team
+devboxos snapshot export abc12345 ./snapshot.tar
+
+# Import a snapshot from a teammate
+devboxos snapshot import ./snapshot.tar
+
+# Restore environment to a snapshot
+devboxos snapshot load abc12345
+
+# Delete old snapshots
+devboxos snapshot gc --keep 5
+devboxos snapshot gc --older-than 7d
+
+# Delete a specific snapshot
+devboxos snapshot delete abc12345
+```
+
+### `devboxos secrets` — Encrypted Secrets
+
+Secrets are encrypted with [age](https://age-encryption.org/) (X25519 + ChaCha20-Poly1305) and stored in `.devbox/secrets.enc` in your project directory.
+
+```bash
+# Set a secret
+devboxos secrets set DATABASE_URL "postgres://user:pass@db:5432/myapp"
+
+# Get a secret (masked by default)
+devboxos secrets get DATABASE_URL
+
+# Get a secret (unmasked)
+devboxos secrets get DATABASE_URL --reveal
+
+# List all secrets
+devboxos secrets list
+
+# Delete a secret
+devboxos secrets delete DATABASE_URL
+
+# Re-encrypt all secrets with a new key
+devboxos secrets rotate
+```
+
+### `devboxos shell` — Interactive Shell Access
+
+Open a shell inside any running service container:
+
+```bash
+# Open a bash shell
+devboxos shell web
+
+# Open a specific shell
+devboxos shell redis -- /bin/sh
+```
+
+### `devboxos cp` — File Copy
+
+Copy files between your local machine and service containers:
+
+```bash
+# Copy from container to local
+devboxos cp web:/etc/nginx/nginx.conf ./nginx.conf
+
+# Copy from local to container
+devboxos cp ./config.json web:/app/config.json
+
+# Copy directories
+devboxos cp web:/app/logs/ ./logs/
+```
+
+### `devboxos top` — Resource Monitor
+
+Real-time CPU and memory dashboard for all running services:
+
+```bash
+# Start the dashboard
+devboxos top
+
+# Custom refresh interval (default: 2s)
+devboxos top --interval 5
+```
+
+### `devboxos logs` — Log Management
+
+```bash
+# View logs for a service
+devboxos logs web
+
+# Follow logs in real-time
+devboxos logs web --follow
+
+# Show last 100 lines
+devboxos logs web --tail 100
+
+# Search logs with regex
+devboxos logs web --search "error|panic"
+
+# Export logs to a file
+devboxos logs web --export ./web-logs.txt
+
+# Filter by time range
+devboxos logs web --since 2024-01-01T00:00:00Z
+```
+
+### `devboxos doctor` — Diagnostics
+
+Run comprehensive system checks:
+
+```bash
+devboxos doctor
+```
+
+Checks performed:
+- Docker daemon accessibility
+- Disk space
+- Memory availability
+- Config file validity
+- Secrets encryption integrity
+- Network configuration
+- Container health
+- Orphaned resource detection
+- Circular dependency detection
+- Port conflict detection
+
+### `devboxos env` — Environment Variables
+
+```bash
+# Show all variables (values masked)
+devboxos env
+
+# Show variables for a specific service
+devboxos env web
+
+# Show unmasked values
+devboxos env --reveal
+```
+
+### `devboxos graph` — Dependency Graph
+
+Visualize your service dependencies as an ASCII tree:
+
+```bash
+devboxos graph
+```
+
+Example output:
+```
+web
+├── api
+│   ├── redis
+│   └── postgres
+└── nginx
+```
+
+### `devboxos upgrade` — Self-Upgrade
+
+```bash
+# Check for and install the latest version
+devboxos upgrade
+```
+
+---
 
 ## Configuration
+
+### `devbox.yml` Reference
+
+A minimal `devbox.yml`:
+
+```yaml
+name: my-project
+services:
+  web:
+    image: nginx:latest
+    ports:
+      - "8080:80"
+  redis:
+    image: redis:7-alpine
+```
+
+A complete `devbox.yml`:
+
+```yaml
+name: my-full-project
+version: "1.0"
+
+services:
+  web:
+    image: nginx:alpine
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: development
+    ports:
+      - "8080:80"
+    env:
+      - NODE_ENV=development
+      - DATABASE_URL=${secrets.DATABASE_URL}
+    volumes:
+      - ./web:/app
+      - web_data:/data
+    depends_on:
+      - api
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    resources:
+      cpus: 0.5
+      memory: 256m
+
+  api:
+    image: myapp-api:latest
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    env:
+      - REDIS_URL=redis://redis:6379
+      - DB_URL=postgres://user:pass@postgres:5432/myapp
+    depends_on:
+      - redis
+      - postgres
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+
+  postgres:
+    image: postgres:16-alpine
+    env:
+      - POSTGRES_DB=myapp
+      - POSTGRES_PASSWORD=${secrets.DB_PASSWORD}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postgres"]
+      interval: 10s
+
+volumes:
+  web_data:
+  redis_data:
+  pg_data:
+```
+
+### CLI Configuration
 
 CLI configuration is stored in `~/.devboxos/config.json`:
 
@@ -120,25 +673,43 @@ devboxos config telemetry # view single key
 devboxos config telemetry false  # set key=value
 ```
 
-## Architecture
+### Engine Configuration
 
-```
-┌──────────────┐     gRPC     ┌──────────────┐     Docker API    ┌─────────┐
-│ devboxos CLI  │ ──────────→ │  engine daemon│ ───────────────→ │  Docker  │
-│  (cobra CLI)  │ ←────────── │  (daemon.go) │ ←─────────────── │         │
-└──────────────┘             └──────────────┘                   └─────────┘
-       │                            │
-       │  (direct fallback)         │
-       └────────────────────────────┘
+The engine accepts these flags:
+
+```bash
+devbox-engine --help
+
+Options:
+  --port 51000       # gRPC port (default: 51000)
+  --host 127.0.0.1   # Listen address (default: 127.0.0.1)
 ```
 
-Most commands prefer the engine daemon but fall back to direct Docker SDK calls when the engine isn't running.
+---
+
+## Templates
+
+Built-in project templates:
+
+| Template | Services |
+|----------|----------|
+| `react-express-postgres` | React frontend, Express API, PostgreSQL |
+| `go-api` | Go API server |
+| `python-django` | Django web app + PostgreSQL |
+| `node-express` | Node.js Express app |
+| `rust-axum` | Rust Axum web server |
+
+```bash
+devboxos init --template go-api
+```
+
+---
 
 ## Development
 
 ### Prerequisites
 
-- Go 1.22+
+- Go 1.25+
 - Docker
 - Protocol Buffers compiler (for proto changes)
 
@@ -167,10 +738,10 @@ make test-race
 # Integration tests (requires Docker)
 make test-integration
 
-# E2E smoke tests (requires CLI binary)
+# E2E smoke tests (local-only, fast)
 make test-e2e-short
 
-# Full E2E (requires Docker)
+# Full E2E suite (requires Docker + engine daemon)
 make test-e2e
 
 # Benchmarks
@@ -183,21 +754,9 @@ make test-security
 make coverage
 ```
 
-### Project Structure
+### Proto Changes
 
-```
-shared/          — Cross-cutting packages (config, secrets, platform, runtime, etc.)
-engine/          — Engine daemon (gRPC server)
-  cmd/           —   Entry point + gRPC handlers
-  internal/      —   Private engine packages (networking, orchestrator, state)
-  proto/         —   gRPC proto definitions + generated code
-cli/             — CLI (cobra-based)
-  cmd/           —   Command implementations
-  internal/      —   gRPC client, output, autodetect
-tests/           — E2E smoke tests (tagged e2e)
-```
-
-### Proto changes
+If you modify the gRPC protocol:
 
 ```bash
 protoc --go_out=. --go_opt=paths=source_relative \
@@ -205,6 +764,133 @@ protoc --go_out=. --go_opt=paths=source_relative \
   engine/proto/engine.proto
 ```
 
+### Linting
+
+```bash
+make vet
+make lint
+```
+
+---
+
+## Comparison: DevBoxOS vs Alternatives
+
+| Feature | DevBoxOS | Docker Compose | Tilt | DevContainer |
+|---------|----------|---------------|------|-------------|
+| Local-only | ✅ | ✅ | ✅ | ✅ |
+| Single binary | ✅ | Requires Docker CLI | Requires Go/Node | VS Code extension |
+| Dependency resolution | ✅ Automatic | ✅ Manual depends_on | ✅ Automatic | ❌ |
+| Health checks | ✅ Built-in | ✅ Supported | ✅ Built-in | ❌ |
+| Snapshots | ✅ Native | ❌ | ❌ | ❌ |
+| Encrypted secrets | ✅ age-encrypted | ❌ Plain env files | ❌ | ❌ |
+| Hot reload | ✅ Built-in | ❌ | ✅ Built-in | ❌ |
+| Log management | ✅ Persistent + search | ❌ Raw docker logs | ✅ | ❌ |
+| Diagnostics | ✅ Comprehensive | ❌ | ❌ | ❌ |
+| Resource monitoring | ✅ Built-in | ❌ | ❌ | ❌ |
+| Plugin system | ✅ Hook-based | ❌ | ❌ | ❌ |
+| Cloud dependency | ❌ None | ❌ None | ❌ None | ❌ None |
+| Config complexity | Low | Medium | High | Medium |
+
+---
+
+## FAQ
+
+**Q: Do I need the engine daemon running all the time?**
+
+A: No. Commands like `init`, `validate`, `build`, `exec`, `shell`, `cp`, `logs`, `graph`, `ps`, `prune`, `destroy`, `snapshot`, `secrets`, and `config` work without the engine by falling back to the Docker SDK directly. Only `start`, `stop`, `status`, `reset`, `wait`, and `top` require the engine.
+
+**Q: Where is data stored?**
+
+A: Project-level data is stored in `.devbox/` inside your project directory. This includes logs, snapshots, encrypted secrets, and SQLite state. CLI config is stored in `~/.devboxos/config.json`.
+
+**Q: Can I use DevBoxOS with existing Docker Compose projects?**
+
+A: Yes. Use `devboxos init compose-import` to convert your `docker-compose.yml` to `devbox.yml`, or use `devboxos init compose-export` to go the other direction.
+
+**Q: Is DevBoxOS production-ready?**
+
+A: DevBoxOS is designed for local development environments, not production deployments. Use it to replace `docker-compose up` and manual container management during development.
+
+**Q: Does DevBoxOS support Kubernetes?**
+
+A: No. DevBoxOS is a local-only tool. It manages Docker containers directly, not Kubernetes pods.
+
+**Q: How do I share my environment with teammates?**
+
+A: Commit your `devbox.yml` and `.devbox/secrets.enc` (the encrypted secrets store). Your teammates clone the repo, install DevBoxOS, and run `devboxos start`.
+
+---
+
+## Troubleshooting
+
+**Engine won't start**
+
+```bash
+# Check if port 51000 is in use
+netstat -an | findstr 51000   # Windows
+lsof -i :51000                # macOS/Linux
+
+# Check Docker is running
+docker info
+```
+
+**Container fails to start**
+
+```bash
+# View logs
+devboxos logs <service>
+
+# Run diagnostics
+devboxos doctor
+
+# Rebuild the service
+devboxos build <service> --no-cache
+devboxos start
+```
+
+**Secret not working**
+
+```bash
+# Verify the secret exists
+devboxos secrets list
+
+# Check the value (with --reveal)
+devboxos secrets get <key> --reveal
+
+# Re-encrypt if needed
+devboxos secrets rotate
+```
+
+---
+
+## Contributing
+
+Contributions are welcome! Here's how to get started:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/my-feature`)
+3. Make your changes
+4. Run tests (`make test && make vet`)
+5. Commit with a descriptive message
+6. Push and open a Pull Request
+
+### Code Style
+
+- Follow Go standard formatting (`gofmt`)
+- Write tests for new features
+- Update documentation for API changes
+- Keep imports sorted (standard, third-party, internal)
+
+### Reporting Issues
+
+Report bugs and feature requests at [github.com/parv68/DevBoxOS/issues](https://github.com/parv68/DevBoxOS/issues).
+
+---
+
 ## License
 
-MIT
+MIT — See [LICENSE](LICENSE) for details.
+
+---
+
+Built with ❤️ for developers who want their dev environment to just work.
