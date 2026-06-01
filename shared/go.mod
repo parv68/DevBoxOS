@@ -1,6 +1,6 @@
 module github.com/devboxos/devboxos/shared
 
-go 1.22
+go 1.25.0
 
 require (
 	filippo.io/age v1.3.1

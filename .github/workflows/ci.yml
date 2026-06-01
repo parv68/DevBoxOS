@@ -11,12 +11,10 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        go-version: ["1.22"]
+        go-version: ["1.25"]
         include:
           - os: ubuntu-latest
-            go-version: "1.23"
-          - os: ubuntu-latest
-            go-version: "1.24"
+            go-version: "1.26"
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -52,7 +50,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.25"
           check-latest: true
 
       - name: Integration tests
@@ -69,7 +67,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.25"
           check-latest: true
 
       - name: Build CLI + engine
@@ -94,7 +92,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.25"
           check-latest: true
 
       - name: Build CLI + engine
@@ -124,7 +122,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.22"
+          go-version: "1.25"
           check-latest: true
 
       - name: Build CLI + engine
