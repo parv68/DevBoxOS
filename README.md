@@ -20,7 +20,7 @@ mv devboxos /usr/local/bin/
 ### Using GoReleaser (tagged releases)
 
 ```bash
-curl -LO https://github.com/devboxos/devboxos/releases/latest/download/devboxos_linux_amd64.tar.gz
+curl -LO https://github.com/parv68/DevBoxOS/releases/latest/download/devboxos_linux_amd64.tar.gz
 tar xzf devboxos_linux_amd64.tar.gz
 sudo mv devboxos /usr/local/bin/
 ```
@@ -30,53 +30,76 @@ sudo mv devboxos /usr/local/bin/
 ```bash
 # Initialize a new project
 cd my-project
-devbox init
+devboxos init
 
 # Validate the generated config
-devbox validate
+devboxos validate
 
 # Start all services (requires engine daemon)
-devbox-engine --daemon &
-devbox start
+devbox-engine &
+devboxos start
 
 # View running services
-devbox status
+devboxos status
 
 # View logs
-devbox logs web
+devboxos logs web
 
 # Stop everything
-devbox stop
+devboxos stop
 
 # Run diagnostics
-devbox doctor
+devboxos doctor
 ```
 
 ## CLI Commands
 
 | Command | Description | Engine Required |
 |---------|-------------|----------------|
-| `devbox init` | Generate devbox.yml by scanning project | No |
-| `devbox validate` | Validate devbox.yml configuration | No |
-| `devbox start` | Start all services | Yes |
-| `devbox stop [service]` | Stop services | Yes |
-| `devbox status` | Show environment status | Yes |
-| `devbox logs <service>` | View service logs | No (local) / Yes (follow) |
-| `devbox reset` | Tear down and rebuild | Yes |
-| `devbox doctor` | Run diagnostics | Yes (via engine) / No (fallback) |
-| `devbox build [service]` | Build service images | No |
-| `devbox destroy` | Remove all managed containers | No |
-| `devbox exec <service> <cmd>` | Execute command in a service | No |
-| `devbox ps` | List running projects and services | No |
-| `devbox prune` | Remove orphaned containers | No |
-| `devbox snapshot [save\|load\|list\|delete]` | Manage environment snapshots | No (fallback) |
-| `devbox secrets [set\|get\|list\|delete\|rotate]` | Manage encrypted secrets | No (fallback) |
-| `devbox init compose-import` | Import docker-compose.yml → devbox config | No |
-| `devbox init compose-export` | Export devbox config → docker-compose.yml | No |
-| `devbox upgrade` | Upgrade to latest version | No |
-| `devbox config` | View or set CLI configuration | No |
-| `devbox version` | Show version | No |
-| `devbox completion [bash\|zsh\|fish\|powershell]` | Generate shell completions | No |
+| `devboxos init` | Generate devbox.yml by scanning project | No |
+| `devboxos validate` | Validate devbox.yml configuration | No |
+| `devboxos start` | Start all services | Yes |
+| `devboxos stop [service]` | Stop services | Yes |
+| `devboxos status` | Show environment status | Yes |
+| `devboxos logs <service>` | View service logs | No (local) / Yes (follow) |
+| `devboxos reset` | Tear down and rebuild | Yes |
+| `devboxos doctor` | Run diagnostics | Yes (via engine) / No (fallback) |
+| `devboxos build [service]` | Build service images | No |
+| `devboxos destroy` | Remove all managed containers | No |
+| `devboxos exec <service> <cmd>` | Execute command in a service | No |
+| `devboxos ps` | List running projects and services | No |
+| `devboxos prune` | Remove orphaned containers | No |
+| `devboxos shell <service>` | Open interactive shell in a service container | No |
+| `devboxos url` | Show accessible URLs for services with port mappings | No |
+| `devboxos wait <service> [--timeout]` | Wait for services to become healthy | Yes |
+| `devboxos cp <service>:<path> <local-path>` | Copy files to/from service containers | No |
+| `devboxos env [service] [--reveal]` | Show environment variables (masked by default) | No |
+| `devboxos graph` | Visualize service dependency graph as ASCII tree | No |
+| `devboxos top [--interval]` | Real-time CPU/memory dashboard for all services | Yes |
+| `devboxos push [service] [--tag --all]` | Push service images to a registry | Yes |
+| `devboxos snapshot [save\|load\|list\|delete\|export\|import\|gc]` | Manage environment snapshots | No (fallback) |
+| `devboxos secrets [set\|get\|list\|delete\|rotate]` | Manage encrypted secrets | No (fallback) |
+| `devboxos init compose-import` | Import docker-compose.yml → devbox config | No |
+| `devboxos init compose-export` | Export devbox config → docker-compose.yml | No |
+| `devboxos upgrade` | Upgrade to latest version | No |
+| `devboxos config` | View or set CLI configuration | No |
+| `devboxos version` | Show version | No |
+| `devboxos completion [bash\|zsh\|fish\|powershell]` | Generate shell completions | No |
+
+### Notable Flags
+
+| Flag | Description |
+|------|-------------|
+| `devboxos init --from-git <repo>` | Clone a repo and auto-detect project configuration |
+| `devboxos init --template <name>` | Generate a project from a built-in template (react-express-postgres, go-api, python-django, node-express, rust-axum) |
+| `devboxos start --watch` | Hot-reload services when files change (fsnotify) |
+| `devboxos build --no-cache` | Bypass Docker build cache |
+| `devboxos build --pull` | Always pull base image before building |
+| `devboxos snapshot export <id> <file>` | Export a snapshot to a tarball |
+| `devboxos snapshot import <file>` | Import a snapshot from a tarball |
+| `devboxos snapshot gc [--keep <n>] [--older-than <duration>]` | Garbage collect old snapshots |
+| `devboxos env --reveal` | Show unmasked secret values |
+| `devboxos wait --timeout <seconds>` | Custom health-check timeout |
 
 ## Configuration
 
@@ -92,18 +115,18 @@ CLI configuration is stored in `~/.devboxos/config.json`:
 View or modify with:
 
 ```bash
-devbox config           # view all
-devbox config telemetry # view single key
-devbox config telemetry false  # set key=value
+devboxos config           # view all
+devboxos config telemetry # view single key
+devboxos config telemetry false  # set key=value
 ```
 
 ## Architecture
 
 ```
-┌─────────────┐     gRPC     ┌──────────────┐     Docker API    ┌─────────┐
-│  devbox CLI  │ ──────────→ │  engine daemon│ ───────────────→ │  Docker  │
-│  (cobra CLI) │ ←────────── │  (daemon.go) │ ←─────────────── │         │
-└─────────────┘             └──────────────┘                   └─────────┘
+┌──────────────┐     gRPC     ┌──────────────┐     Docker API    ┌─────────┐
+│ devboxos CLI  │ ──────────→ │  engine daemon│ ───────────────→ │  Docker  │
+│  (cobra CLI)  │ ←────────── │  (daemon.go) │ ←─────────────── │         │
+└──────────────┘             └──────────────┘                   └─────────┘
        │                            │
        │  (direct fallback)         │
        └────────────────────────────┘
@@ -150,6 +173,12 @@ make test-e2e-short
 # Full E2E (requires Docker)
 make test-e2e
 
+# Benchmarks
+make test-bench
+
+# Security tests
+make test-security
+
 # Code coverage
 make coverage
 ```
@@ -175,34 +204,6 @@ protoc --go_out=. --go_opt=paths=source_relative \
   --go-grpc_out=. --go-grpc_opt=paths=source_relative \
   engine/proto/engine.proto
 ```
-
-## Additional CLI Commands (v0.2+)
-
-| Command | Description | Engine Required |
-|---------|-------------|----------------|
-| `devbox shell <service>` | Open interactive shell in a service container | No |
-| `devbox url` | Show accessible URLs for services with port mappings | No |
-| `devbox wait <service> [--timeout]` | Wait for services to become healthy | Yes |
-| `devbox cp <service>:<path> <local-path>` | Copy files to/from service containers | No |
-| `devbox env [service] [--reveal]` | Show environment variables (masked by default) | No |
-| `devbox graph` | Visualize service dependency graph as ASCII tree | No |
-| `devbox snapshot gc` | Garbage collect old snapshots by age or count | No |
-| `devbox push [service] [--tag --all]` | Push service images to a registry | Yes |
-| `devbox top [--interval]` | Real-time CPU/memory dashboard for all services | Yes |
-
-### Notable New Flags
-
-| Flag | Description |
-|------|-------------|
-| `devbox init --from-git <repo>` | Clone a repo and auto-detect project configuration |
-| `devbox init --template <name>` | Generate a project from a built-in template (react-express-postgres, go-api, python-django, node-express, rust-axum) |
-| `devbox start --watch` | Hot-reload services when files change (fsnotify) |
-| `devbox build --no-cache` | Bypass Docker build cache |
-| `devbox build --pull` | Always pull base image before building |
-| `devbox snapshot export` | Export a snapshot to a tarball |
-| `devbox snapshot import` | Import a snapshot from a tarball |
-| `devbox env --reveal` | Show unmasked secret values |
-| `devbox wait --timeout <seconds>` | Custom health-check timeout |
 
 ## License
 

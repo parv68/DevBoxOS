@@ -1,6 +1,6 @@
 module github.com/devboxos/devboxos/cli
 
-go 1.25.0
+go 1.22
 
 require (
 	github.com/charmbracelet/lipgloss v1.1.0
