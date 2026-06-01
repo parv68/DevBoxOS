@@ -29,9 +29,30 @@ builds:
       - goos: windows
         goarch: arm64
 
+  - id: engine
+    dir: engine/cmd
+    binary: devbox-engine
+    main: .
+    ldflags:
+      - -s -w
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+
 archives:
-  - id: cli
-    builds: [cli]
+  - id: combined
+    builds:
+      - cli
+      - engine
     name_template: "devboxos_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format: tar.gz
     format_overrides:
@@ -58,7 +79,7 @@ changelog:
 
 release:
   github:
-    owner: devboxos
-    name: devboxos
+    owner: parv68
+    name: DevBoxOS
   prerelease: auto
   name_template: "DevBoxOS v{{ .Version }}"

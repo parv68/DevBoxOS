@@ -2,9 +2,9 @@
 set -euo pipefail
 
 # DevBoxOS Installer
-# Usage: curl -fsSL https://devbox.sh/install.sh | sh
+# Usage: curl -fsSL https://raw.githubusercontent.com/parv68/DevBoxOS/main/scripts/install.sh | sh
 
-REPO="devboxos/devboxos"
+REPO="parv68/DevBoxOS"
 INSTALL_DIR="${DEVBOX_INSTALL_DIR:-/usr/local/bin}"
 VERSION="${DEVBOX_VERSION:-latest}"
 GITHUB_URL="https://github.com/${REPO}/releases"
@@ -43,6 +43,10 @@ check_prereqs() {
         error "curl or wget is required"
         exit 1
     fi
+    if ! command -v tar &> /dev/null && ! command -v unzip &> /dev/null; then
+        error "tar (or unzip on Windows) is required"
+        exit 1
+    fi
 }
 
 # Get latest version from GitHub
@@ -53,89 +57,87 @@ get_latest_version() {
     info "Installing DevBoxOS ${VERSION}"
 }
 
-# Download binary
-download_binary() {
+# Download and extract archive
+download_and_extract() {
     local os=$1
     local arch=$2
-    local binary_name="devbox"
-    local ext=""
+    local ext="tar.gz"
+    local extract_cmd="tar xzf"
 
     if [ "$os" = "windows" ]; then
-        binary_name="devbox.exe"
-        ext=".exe"
+        ext="zip"
+        extract_cmd="unzip -o"
     fi
 
-    local filename="devbox-${VERSION}-${os}-${arch}${ext}"
-    local download_url="${GITHUB_URL}/download/${VERSION}/${filename}"
+    local archive_name="devboxos_${VERSION}_${os}_${arch}.${ext}"
+    local archive_url="${GITHUB_URL}/download/${VERSION}/${archive_name}"
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
 
-    info "Downloading ${filename}..."
+    info "Downloading ${archive_name}..."
 
     if command -v curl &> /dev/null; then
-        curl -fsSL -o "/tmp/${filename}" "$download_url" || {
-            error "Failed to download ${filename}"
+        curl -fsSL -o "${tmp_dir}/${archive_name}" "$archive_url" || {
+            error "Failed to download ${archive_name}"
             error "Check available releases at ${GITHUB_URL}"
             exit 1
         }
     else
-        wget -q -O "/tmp/${filename}" "$download_url" || {
-            error "Failed to download ${filename}"
+        wget -q -O "${tmp_dir}/${archive_name}" "$archive_url" || {
+            error "Failed to download ${archive_name}"
             exit 1
         }
     fi
 
     # Verify download
-    if [ ! -s "/tmp/${filename}" ]; then
+    if [ ! -s "${tmp_dir}/${archive_name}" ]; then
         error "Downloaded file is empty"
         exit 1
     fi
 
-    # Make executable
-    chmod +x "/tmp/${filename}"
+    info "Extracting..."
+    (cd "$tmp_dir" && $extract_cmd "${archive_name}")
 
-    # Install
+    # Install binaries
     info "Installing to ${INSTALL_DIR}..."
     mkdir -p "$INSTALL_DIR"
-    mv "/tmp/${filename}" "${INSTALL_DIR}/devbox${ext}"
 
-    # Download engine
-    local engine_filename="devbox-engine-${VERSION}-${os}-${arch}${ext}"
-    local engine_url="${GITHUB_URL}/download/${VERSION}/${engine_filename}"
-
-    info "Downloading engine..."
-    if command -v curl &> /dev/null; then
-        curl -fsSL -o "/tmp/${engine_filename}" "$engine_url" || {
-            warn "Failed to download engine (optional)"
-        }
+    if [ "$os" = "windows" ]; then
+        install -m 755 "${tmp_dir}/devboxos.exe" "${INSTALL_DIR}/devboxos.exe" 2>/dev/null || \
+            cp "${tmp_dir}/devboxos.exe" "${INSTALL_DIR}/devboxos.exe"
+        if [ -f "${tmp_dir}/devbox-engine.exe" ]; then
+            cp "${tmp_dir}/devbox-engine.exe" "${INSTALL_DIR}/devbox-engine.exe" 2>/dev/null || true
+        fi
     else
-        wget -q -O "/tmp/${engine_filename}" "$engine_url" || {
-            warn "Failed to download engine (optional)"
-        }
-    fi
-
-    if [ -s "/tmp/${engine_filename}" ]; then
-        chmod +x "/tmp/${engine_filename}"
-        mv "/tmp/${engine_filename}" "${INSTALL_DIR}/devbox-engine${ext}"
+        install -m 755 "${tmp_dir}/devboxos" "${INSTALL_DIR}/devboxos" 2>/dev/null || \
+            cp "${tmp_dir}/devboxos" "${INSTALL_DIR}/devboxos"
+        if [ -f "${tmp_dir}/devbox-engine" ]; then
+            install -m 755 "${tmp_dir}/devbox-engine" "${INSTALL_DIR}/devbox-engine" 2>/dev/null || \
+                cp "${tmp_dir}/devbox-engine" "${INSTALL_DIR}/devbox-engine"
+        fi
     fi
 
     # Cleanup
-    rm -f "/tmp/${filename}" "/tmp/${engine_filename}"
+    rm -rf "$tmp_dir"
 }
 
 # Verify installation
 verify_install() {
-    if command -v devbox &> /dev/null; then
+    if command -v devboxos &> /dev/null; then
         info "DevBoxOS installed successfully!"
         echo ""
-        echo "  Version: $(devbox version 2>/dev/null || echo 'unknown')"
-        echo "  Location: $(which devbox)"
+        echo "  Version: $(devboxos version 2>/dev/null || echo 'unknown')"
+        echo "  Location: $(which devboxos)"
         echo ""
         echo "Get started:"
-        echo "  devbox init          # Initialize a new project"
-        echo "  devbox start         # Start your environment"
-        echo "  devbox doctor        # Run diagnostics"
+        echo "  devboxos init          # Initialize a new project"
+        echo "  cd my-project"
+        echo "  devbox-engine &        # Start the engine daemon"
+        echo "  devboxos start         # Start your environment"
+        echo "  devboxos doctor        # Run diagnostics"
         echo ""
     else
-        error "Installation failed - devbox not found in PATH"
+        error "Installation failed - devboxos not found in PATH"
         exit 1
     fi
 }
@@ -155,7 +157,7 @@ main() {
     info "Detected: ${os}/${arch}"
 
     get_latest_version
-    download_binary "$os" "$arch"
+    download_and_extract "$os" "$arch"
     verify_install
 }
 

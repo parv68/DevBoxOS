@@ -1,5 +1,7 @@
 # Binaries
 dist/
+cli/devboxos
+engine/devbox-engine
 *.exe
 *.dll
 *.so
@@ -23,6 +25,11 @@ vendor/
 # OS
 .DS_Store
 Thumbs.db
+
+# Logs
+engine-stderr.log
+engine-stdout.log
+bench-results.txt
 
 # DevBoxOS local state
 ~/.devbox/

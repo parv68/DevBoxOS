@@ -147,7 +147,7 @@ func downloadAndInstall(release *GitHubRelease) error {
 	// Install CLI binary
 	destPath, err := os.Executable()
 	if err != nil {
-		destPath = filepath.Join("/usr/local/bin", "devbox"+ext)
+		destPath = filepath.Join("/usr/local/bin", "devboxos"+ext)
 	}
 
 	if err := os.Rename(tmpFile.Name(), destPath); err != nil {
