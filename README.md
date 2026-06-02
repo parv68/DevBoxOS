@@ -167,26 +167,69 @@ sudo mv devboxos devbox-engine /usr/local/bin/
 
 ### Windows
 
-**Option 1 — Download the release archive**
+**Option 1 — Install script (recommended)**
 
+One command — downloads, extracts, adds to PATH permanently.
+
+PowerShell:
 ```powershell
-# Download
-Invoke-WebRequest -Uri "https://github.com/parv68/DevBoxOS/releases/latest/download/devboxos_windows_amd64.zip" -OutFile "devboxos.zip"
-
-# Extract
-Expand-Archive -Path "devboxos.zip" -DestinationPath "devboxos"
-
-# Add to PATH
-$env:Path += ";$pwd\devboxos"
+irm https://raw.githubusercontent.com/parv68/DevBoxOS/main/scripts/install.ps1 | iex
 ```
 
-**Option 2 — Build from source**
+cmd.exe:
+```cmd
+powershell -c "irm https://raw.githubusercontent.com/parv68/DevBoxOS/main/scripts/install.ps1 | iex"
+```
+
+After installation, close and reopen your terminal — `devboxos` works from anywhere.
+
+**Option 2 — Download from GitHub Releases (manual)**
+
+PowerShell:
+```powershell
+# Download the latest release
+Invoke-WebRequest -Uri "https://github.com/parv68/DevBoxOS/releases/latest/download/devboxos_windows_amd64.zip" -OutFile "devboxos.zip"
+
+# Extract to a permanent location
+$installDir = "$env:LOCALAPPDATA\DevBoxOS"
+Expand-Archive -Path "devboxos.zip" -DestinationPath $installDir -Force
+
+# Add to PATH permanently
+[Environment]::SetEnvironmentVariable("Path", "$installDir;$env:Path", [EnvironmentVariableTarget]::User)
+
+# Verify
+devboxos version
+```
+
+cmd.exe:
+```cmd
+REM Download
+powershell -c "Invoke-WebRequest -Uri 'https://github.com/parv68/DevBoxOS/releases/latest/download/devboxos_windows_amd64.zip' -OutFile 'devboxos.zip'"
+
+REM Extract
+powershell -c "Expand-Archive -Path 'devboxos.zip' -DestinationPath '%LOCALAPPDATA%\DevBoxOS' -Force"
+
+REM Add to PATH permanently
+setx PATH "%PATH%;%LOCALAPPDATA%\DevBoxOS"
+
+REM Close and reopen your terminal, then verify
+devboxos version
+```
+
+**Option 3 — Build from source**
 
 ```powershell
 git clone https://github.com/parv68/DevBoxOS.git
 cd DevBoxOS
 go build -o devboxos.exe ./cli
 go build -o devbox-engine.exe ./engine/cmd
+```
+
+All methods install two binaries: `devboxos.exe` (CLI) and `devbox-engine.exe` (daemon). After installation, start the engine and verify:
+
+```powershell
+devbox-engine
+devboxos version
 ```
 
 ### Prerequisites
