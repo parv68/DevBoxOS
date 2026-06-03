@@ -71,6 +71,10 @@ func setupTestProject(t *testing.T) string {
 	devboxDir := filepath.Join(dir, ".devbox")
 	os.MkdirAll(devboxDir, 0755)
 
+	t.Cleanup(func() {
+		os.RemoveAll(devboxDir)
+	})
+
 	yml := []byte(`name: test-project
 version: "1.0"
 services:
@@ -344,7 +348,7 @@ func TestServer_SnapshotSave_NoDocker(t *testing.T) {
 		t.Fatalf("SnapshotSave() Recv() failed: %v", err)
 	}
 	if resp.Status != "error" {
-		t.Logf("SnapshotSave returned status: %s", resp.Status)
+		t.Errorf("SnapshotSave expected status 'error', got: %s", resp.Status)
 	}
 }
 
@@ -366,7 +370,7 @@ func TestServer_SnapshotLoad_NoDocker(t *testing.T) {
 		t.Fatalf("SnapshotLoad() Recv() failed: %v", err)
 	}
 	if resp.Status != "error" {
-		t.Logf("SnapshotLoad returned status: %s", resp.Status)
+		t.Errorf("SnapshotLoad expected status 'error', got: %s", resp.Status)
 	}
 }
 
