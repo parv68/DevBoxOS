@@ -3,7 +3,7 @@
     DevBoxOS Installer for Windows.
 .DESCRIPTION
     Downloads and installs DevBoxOS CLI and Engine, adds to PATH.
-    Usage: irm https://raw.githubusercontent.com/parv68/DevBoxOS/main/scripts/install.ps1 | iex
+    Usage: iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/parv68/DevBoxOS/main/scripts/install.ps1'))
 .PARAMETER Version
     Version to install (default: latest).
     Set via $env:DEVBOX_VERSION or pass as parameter.

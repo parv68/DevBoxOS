@@ -173,12 +173,12 @@ One command — downloads, extracts, adds to PATH permanently.
 
 PowerShell:
 ```powershell
-irm https://raw.githubusercontent.com/parv68/DevBoxOS/main/scripts/install.ps1 | iex
+iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/parv68/DevBoxOS/main/scripts/install.ps1'))
 ```
 
 cmd.exe:
 ```cmd
-powershell -c "irm https://raw.githubusercontent.com/parv68/DevBoxOS/main/scripts/install.ps1 | iex"
+powershell -c "iex ((New-Object System.Net.WebClient).DownloadString('https://raw.githubusercontent.com/parv68/DevBoxOS/main/scripts/install.ps1'))"
 ```
 
 After installation, close and reopen your terminal — `devbox` works from anywhere.
