@@ -26,10 +26,10 @@ func findCLI(t testing.TB) string {
 	t.Helper()
 
 	candidates := []string{
-		filepath.Join("..", "cli", "devboxos"),
-		filepath.Join("..", "cli", "devboxos.exe"),
-		"devboxos",
-		"devboxos.exe",
+		filepath.Join("..", "cli", "devbox"),
+		filepath.Join("..", "cli", "devbox.exe"),
+		"devbox",
+		"devbox.exe",
 	}
 
 	for _, c := range candidates {
@@ -39,12 +39,12 @@ func findCLI(t testing.TB) string {
 		}
 	}
 
-	which, err := exec.LookPath("devboxos")
+	which, err := exec.LookPath("devbox")
 	if err == nil {
 		return which
 	}
 
-	t.Fatalf("devboxos CLI binary not found (try: go build -o cli/ ./cli)")
+	t.Fatalf("devbox CLI binary not found (try: go build -o cli/ ./cli)")
 	return ""
 }
 
@@ -97,8 +97,8 @@ func TestE2E_Version(t *testing.T) {
 	if err != nil {
 		t.Fatalf("version failed: %v\n%s", err, out)
 	}
-	if !strings.Contains(strings.ToLower(string(out)), "devboxos") {
-		t.Errorf("output should contain 'devboxos', got: %s", out)
+	if !strings.Contains(string(out), "DevBoxOS") {
+		t.Errorf("output should contain 'DevBoxOS', got: %s", out)
 	}
 }
 
@@ -233,7 +233,7 @@ func TestE2E_CompletionBash(t *testing.T) {
 	if err != nil {
 		t.Fatalf("completion bash failed: %v\n%s", err, out)
 	}
-	if !strings.Contains(string(out), "bashcompinit") && !strings.Contains(string(out), "_devboxos") && !strings.Contains(string(out), "# bash completion") {
+	if !strings.Contains(string(out), "bashcompinit") && !strings.Contains(string(out), "_devbox") && !strings.Contains(string(out), "# bash completion") {
 		t.Logf("completion output (first 200 chars): %s", string(out)[:min(len(out), 200)])
 	}
 }

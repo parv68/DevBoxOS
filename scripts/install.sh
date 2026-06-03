@@ -69,7 +69,7 @@ download_and_extract() {
         extract_cmd="unzip -o"
     fi
 
-    local archive_name="devboxos_${VERSION}_${os}_${arch}.${ext}"
+    local archive_name="devbox_${VERSION}_${os}_${arch}.${ext}"
     local archive_url="${GITHUB_URL}/download/${VERSION}/${archive_name}"
     local tmp_dir
     tmp_dir=$(mktemp -d)
@@ -103,14 +103,14 @@ download_and_extract() {
     mkdir -p "$INSTALL_DIR"
 
     if [ "$os" = "windows" ]; then
-        install -m 755 "${tmp_dir}/devboxos.exe" "${INSTALL_DIR}/devboxos.exe" 2>/dev/null || \
-            cp "${tmp_dir}/devboxos.exe" "${INSTALL_DIR}/devboxos.exe"
+        install -m 755 "${tmp_dir}/devbox.exe" "${INSTALL_DIR}/devbox.exe" 2>/dev/null || \
+            cp "${tmp_dir}/devbox.exe" "${INSTALL_DIR}/devbox.exe"
         if [ -f "${tmp_dir}/devbox-engine.exe" ]; then
             cp "${tmp_dir}/devbox-engine.exe" "${INSTALL_DIR}/devbox-engine.exe" 2>/dev/null || true
         fi
     else
-        install -m 755 "${tmp_dir}/devboxos" "${INSTALL_DIR}/devboxos" 2>/dev/null || \
-            cp "${tmp_dir}/devboxos" "${INSTALL_DIR}/devboxos"
+        install -m 755 "${tmp_dir}/devbox" "${INSTALL_DIR}/devbox" 2>/dev/null || \
+            cp "${tmp_dir}/devbox" "${INSTALL_DIR}/devbox"
         if [ -f "${tmp_dir}/devbox-engine" ]; then
             install -m 755 "${tmp_dir}/devbox-engine" "${INSTALL_DIR}/devbox-engine" 2>/dev/null || \
                 cp "${tmp_dir}/devbox-engine" "${INSTALL_DIR}/devbox-engine"
@@ -123,21 +123,20 @@ download_and_extract() {
 
 # Verify installation
 verify_install() {
-    if command -v devboxos &> /dev/null; then
+    if command -v devbox &> /dev/null; then
         info "DevBoxOS installed successfully!"
         echo ""
-        echo "  Version: $(devboxos version 2>/dev/null || echo 'unknown')"
-        echo "  Location: $(which devboxos)"
+        echo "  Version: $(devbox version 2>/dev/null || echo 'unknown')"
+        echo "  Location: $(which devbox)"
         echo ""
         echo "Get started:"
-        echo "  devboxos init          # Initialize a new project"
+        echo "  devbox init            # Initialize a new project"
         echo "  cd my-project"
-        echo "  devbox-engine &        # Start the engine daemon"
-        echo "  devboxos start         # Start your environment"
-        echo "  devboxos doctor        # Run diagnostics"
+        echo "  devbox start           # Start your environment"
+        echo "  devbox doctor          # Run diagnostics"
         echo ""
     else
-        error "Installation failed - devboxos not found in PATH"
+        error "Installation failed - devbox not found in PATH"
         exit 1
     fi
 }

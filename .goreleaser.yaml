@@ -1,6 +1,6 @@
 version: 2
 
-project_name: devboxos
+project_name: devbox
 
 before:
   hooks:
@@ -9,7 +9,7 @@ before:
 builds:
   - id: cli
     dir: cli
-    binary: devboxos
+    binary: devbox
     main: .
     ldflags:
       - -s -w
@@ -53,7 +53,7 @@ archives:
     builds:
       - cli
       - engine
-    name_template: "devboxos_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    name_template: "devbox_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format: tar.gz
     format_overrides:
       - goos: windows

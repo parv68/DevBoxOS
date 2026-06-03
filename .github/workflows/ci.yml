@@ -75,7 +75,7 @@ jobs:
 
       - name: Build CLI + engine
         run: |
-          go build -o cli/devboxos ./cli
+          go build -o cli/devbox ./cli
           go build -o engine/devbox-engine ./engine/cmd
 
       - name: Start engine daemon
@@ -100,7 +100,7 @@ jobs:
 
       - name: Build CLI + engine
         run: |
-          go build -o cli/devboxos ./cli
+          go build -o cli/devbox ./cli
           go build -o engine/devbox-engine ./engine/cmd
 
       - name: Start engine daemon
@@ -130,7 +130,7 @@ jobs:
 
       - name: Build CLI + engine
         run: |
-          go build -o cli/devboxos ./cli
+          go build -o cli/devbox ./cli
           go build -o engine/devbox-engine ./engine/cmd
 
       - name: Start engine daemon

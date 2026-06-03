@@ -14,7 +14,7 @@ var (
 
 // rootCmd is the base command for the DevBoxOS CLI.
 var rootCmd = &cobra.Command{
-	Use:   "devboxos",
+	Use:   "devbox",
 	Short: "DevBoxOS — Universal Development Sandbox",
 	Long: `DevBoxOS is a universal development sandbox platform that enables
 software teams to spin up fully configured, reproducible development

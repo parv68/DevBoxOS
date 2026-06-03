@@ -88,9 +88,9 @@
 | `TestIsWindows_True` | On Windows | true |
 | `TestIsWindows_False` | On macOS/Linux | false |
 | `TestConfigDir_Windows` | Windows %APPDATA% | `C:\Users\user\AppData\Roaming\DevBoxOS` |
-| `TestConfigDir_Unix` | macOS/Linux $HOME | `/home/user/.config/devboxos` |
+| `TestConfigDir_Unix` | macOS/Linux $HOME | `/home/user/.config/devbox` |
 | `TestDataDir_Windows` | Windows | uses LocalAppData |
-| `TestDataDir_Unix` | macOS/Linux | uses `~/.local/share/devboxos` |
+| `TestDataDir_Unix` | macOS/Linux | uses `~/.local/share/devbox` |
 | `TestEngineSocketPath_Unix` | On Unix | `~/.devbox/engine.sock` |
 | `TestEngineSocketPath_Windows` | On Windows | `127.0.0.1:51000` (TCP) |
 | `TestEngineAddress_Windows` | Returns bare IP:port | `127.0.0.1:51000` (no tcp:// prefix) |
@@ -469,7 +469,7 @@ Steps:
   1. devbox config get engine.port     → Returns "51000" (default)
   2. devbox config set engine.port 51001 → Set
   3. devbox config get engine.port     → Returns "51001"
-  4. Verify ~/.config/devboxos/config.json → File contains port: 51001
+  4. Verify ~/.config/devbox/config.json → File contains port: 51001
   5. devbox config set engine.port 51000 → Reset to default
 ```
 

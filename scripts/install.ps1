@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     DevBoxOS Installer for Windows.
 .DESCRIPTION
@@ -16,17 +16,15 @@ param(
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue"
 
-# Colors
-function Write-Info  { Write-Host "ℹ $args" -ForegroundColor Green }
-function Write-Warn  { Write-Host "⚠ $args" -ForegroundColor Yellow }
-function Write-Error { Write-Host "✗ $args" -ForegroundColor Red }
+function Write-Info  { Write-Host "[INFO] $args" -ForegroundColor Green }
+function Write-Warn  { Write-Host "[WARN] $args" -ForegroundColor Yellow }
+function Write-Error { Write-Host "[ERR]  $args" -ForegroundColor Red }
 
 $RepoOwner = "parv68"
 $RepoName = "DevBoxOS"
 $Repo = "$RepoOwner/$RepoName"
 $InstallDir = if ($env:DEVBOX_INSTALL_DIR) { $env:DEVBOX_INSTALL_DIR } else { "$env:LOCALAPPDATA\DevBoxOS" }
 
-# Detect architecture
 $arch = switch ($env:PROCESSOR_ARCHITECTURE) {
     "AMD64"  { "amd64" }
     "ARM64"  { "arm64" }
@@ -35,7 +33,6 @@ $arch = switch ($env:PROCESSOR_ARCHITECTURE) {
 
 Write-Info "Detected: windows/$arch"
 
-# Get latest version from GitHub releases
 if (-not $Version) {
     Write-Info "Fetching latest version..."
     try {
@@ -50,12 +47,10 @@ if (-not $Version) {
 
 Write-Info "Installing DevBoxOS $Version"
 
-# Build download URL
-$archiveName = "devboxos_$($Version -replace '^v', '')_windows_$arch.zip"
+$archiveName = "devbox_$($Version -replace '^v', '')_windows_$arch.zip"
 $downloadUrl = "https://github.com/$Repo/releases/download/$Version/$archiveName"
-$zipPath = "$env:TEMP\devboxos_install.zip"
+$zipPath = "$env:TEMP\devbox_install.zip"
 
-# Download archive
 Write-Info "Downloading $archiveName ..."
 try {
     Invoke-WebRequest -Uri $downloadUrl -OutFile $zipPath -ErrorAction Stop
@@ -65,17 +60,14 @@ try {
     exit 1
 }
 
-# Verify download
 if (-not (Test-Path $zipPath) -or (Get-Item $zipPath).Length -eq 0) {
     Write-Error "Downloaded file is empty or missing"
     exit 1
 }
 
-# Create install directory
 Write-Info "Installing to $InstallDir ..."
 New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
 
-# Extract archive
 Write-Info "Extracting..."
 try {
     Expand-Archive -Path $zipPath -DestinationPath $InstallDir -Force
@@ -84,27 +76,22 @@ try {
     exit 1
 }
 
-# Cleanup zip
 Remove-Item -Path $zipPath -Force -ErrorAction SilentlyContinue
 
-# Add to PATH if not already present
 $currentPath = [Environment]::GetEnvironmentVariable("Path", [EnvironmentVariableTarget]::User)
 if ($currentPath -notlike "*$InstallDir*") {
     Write-Info "Adding $InstallDir to PATH..."
     [Environment]::SetEnvironmentVariable("Path", "$InstallDir;$currentPath", [EnvironmentVariableTarget]::User)
-    # Also update current session PATH
     $env:Path = "$InstallDir;$env:Path"
 } else {
     Write-Info "$InstallDir is already in PATH"
 }
 
-# Verify installation
-$cliPath = "$InstallDir\devboxos.exe"
+$cliPath = "$InstallDir\devbox.exe"
 $enginePath = "$InstallDir\devbox-engine.exe"
 
 if ((Test-Path $cliPath) -and (Test-Path $enginePath)) {
     Write-Info "DevBoxOS installed successfully!"
-
     try {
         $versionOutput = & $cliPath version 2>$null
         Write-Host ""
@@ -114,16 +101,14 @@ if ((Test-Path $cliPath) -and (Test-Path $enginePath)) {
     } catch {
         Write-Warn "Could not verify version (close and reopen your terminal)"
     }
-
     Write-Host "  Get started:"
-    Write-Host "    devbox-engine    # Start the engine daemon"
-    Write-Host "    devboxos init    # Initialize a new project"
-    Write-Host "    devboxos start   # Start your environment"
-    Write-Host "    devboxos doctor  # Run diagnostics"
+    Write-Host "  Get started:"
+    Write-Host "    devbox init      # Initialize a new project"
+    Write-Host "    devbox start     # Start your environment"
+    Write-Host "    devbox doctor    # Run diagnostics"
     Write-Host ""
-
     Write-Warn "Close and reopen your terminal, or run this to update PATH now:"
-    Write-Host "  `$env:Path = \"$InstallDir;`$env:Path\""
+    Write-Host '  $env:Path = "'"$InstallDir"';$env:Path"'
     Write-Host ""
 } else {
     Write-Error "Installation failed - binaries not found in $InstallDir"

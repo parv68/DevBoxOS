@@ -21,25 +21,25 @@ test-integration:
 	$(GO) test $(GOFLAGS) -tags=integration -count=1 ./shared/... ./engine/... ./cli/... -timeout 300s
 
 GOEXE := $(shell $(GO) env GOEXE)
-CLI_BIN := cli/devboxos$(GOEXE)
+CLI_BIN := cli/devbox$(GOEXE)
 
 test-e2e:
-	rm -f cli/devboxos cli/devboxos.exe
+	rm -f cli/devbox cli/devbox.exe
 	$(GO) build -o $(CLI_BIN) ./cli
 	$(GO) test $(GOFLAGS) -tags=e2e -count=1 ./tests/... -timeout 600s -v
 
 test-e2e-short:
-	rm -f cli/devboxos cli/devboxos.exe
+	rm -f cli/devbox cli/devbox.exe
 	$(GO) build -o $(CLI_BIN) ./cli
 	$(GO) test $(GOFLAGS) -tags=e2e -count=1 -short ./tests/... -timeout 300s -v
 
 test-bench:
-	rm -f cli/devboxos cli/devboxos.exe
+	rm -f cli/devbox cli/devbox.exe
 	$(GO) build -o $(CLI_BIN) ./cli
 	$(GO) test $(GOFLAGS) -tags=e2e -bench=. -benchtime=1x ./tests/... -run=^\$$ -timeout 600s -v 2>&1 | tee bench-results.txt
 
 test-security:
-	rm -f cli/devboxos cli/devboxos.exe
+	rm -f cli/devbox cli/devbox.exe
 	$(GO) build -o $(CLI_BIN) ./cli
 	$(GO) test $(GOFLAGS) -tags=e2e -count=1 -short ./tests/... -run TestSecurity -timeout 300s -v
 

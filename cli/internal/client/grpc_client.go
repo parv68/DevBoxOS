@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"time"
 
@@ -15,6 +16,36 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
+
+// engineBinPath returns the path to the devbox-engine binary,
+// assumed to be in the same directory as the running CLI binary.
+func engineBinPath() (string, error) {
+	cliExe, err := os.Executable()
+	if err != nil {
+		return "", err
+	}
+	dir := filepath.Dir(cliExe)
+	bin := filepath.Join(dir, "devbox-engine")
+	if platform.IsWindows() {
+		bin += ".exe"
+	}
+	return bin, nil
+}
+
+// startEngineDaemon launches the engine daemon as a background process.
+func startEngineDaemon() error {
+	binPath, err := engineBinPath()
+	if err != nil {
+		return fmt.Errorf("locate engine binary: %w", err)
+	}
+	cmd := exec.Command(binPath, "--daemon")
+	cmd.Stdout = os.Stderr
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("start engine daemon: %w", err)
+	}
+	return nil
+}
 
 func configPath() string {
 	return filepath.Join(platform.ConfigDir(), "config.json")
@@ -60,7 +91,7 @@ type Client struct {
 	client pb.EngineServiceClient
 }
 
-// New creates a new engine client.
+// New creates a new engine client, auto-starting the engine daemon if needed.
 func New() (*Client, error) {
 	addr := platform.EngineAddress()
 
@@ -71,8 +102,28 @@ func New() (*Client, error) {
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithBlock(),
 	)
+	if err == nil {
+		return &Client{
+			conn:   conn,
+			client: pb.NewEngineServiceClient(conn),
+		}, nil
+	}
+
+	if err := startEngineDaemon(); err != nil {
+		return nil, fmt.Errorf("connect to engine daemon at %s: %w\n\nFailed to auto-start engine: %v", addr, err, err)
+	}
+
+	// Retry connection after starting the daemon
+	time.Sleep(1 * time.Second)
+	ctx2, cancel2 := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel2()
+
+	conn, err = grpc.DialContext(ctx2, addr,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithBlock(),
+	)
 	if err != nil {
-		return nil, fmt.Errorf("connect to engine daemon at %s: %w\n\nIs the engine running? Run: devbox-engine --daemon", addr, err)
+		return nil, fmt.Errorf("connect to engine daemon at %s after auto-start: %w", addr, err)
 	}
 
 	return &Client{
