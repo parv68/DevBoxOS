@@ -102,7 +102,6 @@ if ((Test-Path $cliPath) -and (Test-Path $enginePath)) {
         Write-Warn "Could not verify version (close and reopen your terminal)"
     }
     Write-Host "  Get started:"
-    Write-Host "  Get started:"
     Write-Host "    devbox init      # Initialize a new project"
     Write-Host "    devbox start     # Start your environment"
     Write-Host "    devbox doctor    # Run diagnostics"
