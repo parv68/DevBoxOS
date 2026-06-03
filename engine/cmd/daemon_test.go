@@ -331,6 +331,13 @@ func TestServer_SnapshotDelete_NotFound(t *testing.T) {
 }
 
 func TestServer_SnapshotSave_NoDocker(t *testing.T) {
+	rt := docker.NewDockerRuntime()
+	if err := rt.Connect(context.Background()); err == nil {
+		rt.Close()
+		t.Skip("Docker is available — skipping NoDocker test")
+	}
+	rt.Close()
+
 	projectDir := setupTestProject(t)
 	_, client, cleanup := setupTestServer(t)
 	defer cleanup()
@@ -343,16 +350,28 @@ func TestServer_SnapshotSave_NoDocker(t *testing.T) {
 		t.Fatalf("SnapshotSave() stream failed: %v", err)
 	}
 
-	resp, err := stream.Recv()
-	if err != nil {
-		t.Fatalf("SnapshotSave() Recv() failed: %v", err)
+	// Drain stream until EOF to ensure goroutine finishes before cleanup.
+	lastStatus := ""
+	for {
+		resp, err := stream.Recv()
+		if err != nil {
+			break
+		}
+		lastStatus = resp.Status
 	}
-	if resp.Status != "error" {
-		t.Logf("SnapshotSave returned status: %s (expected 'error' when no Docker)", resp.Status)
+	if lastStatus != "" && lastStatus != "error" {
+		t.Logf("SnapshotSave returned status: %s (expected 'error' when no Docker)", lastStatus)
 	}
 }
 
 func TestServer_SnapshotLoad_NoDocker(t *testing.T) {
+	rt := docker.NewDockerRuntime()
+	if err := rt.Connect(context.Background()); err == nil {
+		rt.Close()
+		t.Skip("Docker is available — skipping NoDocker test")
+	}
+	rt.Close()
+
 	projectDir := setupTestProject(t)
 	_, client, cleanup := setupTestServer(t)
 	defer cleanup()
@@ -365,12 +384,16 @@ func TestServer_SnapshotLoad_NoDocker(t *testing.T) {
 		t.Fatalf("SnapshotLoad() stream failed: %v", err)
 	}
 
-	resp, err := stream.Recv()
-	if err != nil {
-		t.Fatalf("SnapshotLoad() Recv() failed: %v", err)
+	lastStatus := ""
+	for {
+		resp, err := stream.Recv()
+		if err != nil {
+			break
+		}
+		lastStatus = resp.Status
 	}
-	if resp.Status != "error" {
-		t.Logf("SnapshotLoad returned status: %s (expected 'error' when no Docker)", resp.Status)
+	if lastStatus != "" && lastStatus != "error" {
+		t.Logf("SnapshotLoad returned status: %s (expected 'error' when no Docker)", lastStatus)
 	}
 }
 

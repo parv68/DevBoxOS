@@ -83,11 +83,20 @@ Write-Info "Installing to $InstallDir ..."
 New-Item -ItemType Directory -Path $InstallDir -Force | Out-Null
 
 Write-Info "Extracting..."
+$tmpExtract = "$env:TEMP\devbox_extract"
 try {
-    Expand-Archive -Path $zipPath -DestinationPath $InstallDir -Force
+    New-Item -ItemType Directory -Path $tmpExtract -Force | Out-Null
+    Expand-Archive -Path $zipPath -DestinationPath $tmpExtract -Force
+
+    Get-ChildItem -Path $tmpExtract | ForEach-Object {
+        $dest = Join-Path $InstallDir $_.Name
+        Move-Item -Path $_.FullName -Destination $dest -Force
+    }
 } catch {
     Write-Error "Failed to extract archive: $_"
     throw "Extraction failed"
+} finally {
+    if (Test-Path $tmpExtract) { Remove-Item -Path $tmpExtract -Recurse -Force -ErrorAction SilentlyContinue }
 }
 
 Remove-Item -Path $zipPath -Force -ErrorAction SilentlyContinue
