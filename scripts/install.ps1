@@ -41,28 +41,42 @@ if (-not $Version) {
     } catch {
         Write-Error "Failed to fetch latest version. Check your internet connection."
         Write-Error "You can set a specific version: `$env:DEVBOX_VERSION = 'v1.0.0'"
-        exit 1
+        throw "Failed to fetch latest version"
     }
 }
 
 Write-Info "Installing DevBoxOS $Version"
 
-$archiveName = "devbox_$($Version -replace '^v', '')_windows_$arch.zip"
-$downloadUrl = "https://github.com/$Repo/releases/download/$Version/$archiveName"
-$zipPath = "$env:TEMP\devbox_install.zip"
+$versionStr = $Version -replace '^v', ''
+$archiveNames = @(
+    "devbox_${versionStr}_windows_${arch}.zip"
+    "devboxos_${versionStr}_windows_${arch}.zip"
+)
 
-Write-Info "Downloading $archiveName ..."
-try {
-    Invoke-WebRequest -Uri $downloadUrl -OutFile $zipPath -ErrorAction Stop
-} catch {
-    Write-Error "Failed to download $downloadUrl"
+$zipPath = "$env:TEMP\devbox_install.zip"
+$downloaded = $false
+
+foreach ($name in $archiveNames) {
+    $downloadUrl = "https://github.com/$Repo/releases/download/$Version/$name"
+    Write-Info "Downloading $name ..."
+    try {
+        Invoke-WebRequest -Uri $downloadUrl -OutFile $zipPath -ErrorAction Stop
+        $downloaded = $true
+        break
+    } catch {
+        Write-Warn "Failed to download $name, trying next..."
+    }
+}
+
+if (-not $downloaded) {
+    Write-Error "Failed to download from all archive names"
     Write-Error "Check available releases at https://github.com/$Repo/releases"
-    exit 1
+    throw "Download failed"
 }
 
 if (-not (Test-Path $zipPath) -or (Get-Item $zipPath).Length -eq 0) {
     Write-Error "Downloaded file is empty or missing"
-    exit 1
+    throw "Downloaded file is empty"
 }
 
 Write-Info "Installing to $InstallDir ..."
@@ -73,7 +87,7 @@ try {
     Expand-Archive -Path $zipPath -DestinationPath $InstallDir -Force
 } catch {
     Write-Error "Failed to extract archive: $_"
-    exit 1
+    throw "Extraction failed"
 }
 
 Remove-Item -Path $zipPath -Force -ErrorAction SilentlyContinue
@@ -87,8 +101,20 @@ if ($currentPath -notlike "*$InstallDir*") {
     Write-Info "$InstallDir is already in PATH"
 }
 
+# Handle old binary name (pre-rename releases had devboxos.exe)
 $cliPath = "$InstallDir\devbox.exe"
+if (-not (Test-Path $cliPath)) {
+    $oldCli = "$InstallDir\devboxos.exe"
+    if (Test-Path $oldCli) {
+        Rename-Item -Path $oldCli -NewName "devbox.exe" -Force
+    }
+}
+
 $enginePath = "$InstallDir\devbox-engine.exe"
+$oldEngine = "$InstallDir\devboxos-engine.exe"
+if (-not (Test-Path $enginePath) -and (Test-Path $oldEngine)) {
+    Rename-Item -Path $oldEngine -NewName "devbox-engine.exe" -Force
+}
 
 if ((Test-Path $cliPath) -and (Test-Path $enginePath)) {
     Write-Info "DevBoxOS installed successfully!"
@@ -107,9 +133,9 @@ if ((Test-Path $cliPath) -and (Test-Path $enginePath)) {
     Write-Host "    devbox doctor    # Run diagnostics"
     Write-Host ""
     Write-Warn "Close and reopen your terminal, or run this to update PATH now:"
-    Write-Host '  $env:Path = "'"$InstallDir"';$env:Path"'
+    Write-Host "  `$env:Path = `"$InstallDir;`$env:Path`""
     Write-Host ""
 } else {
     Write-Error "Installation failed - binaries not found in $InstallDir"
-    exit 1
+    throw "Installation failed"
 }
