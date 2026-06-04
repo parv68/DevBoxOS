@@ -13,6 +13,19 @@ const (
 	defaultConfigFile = "devbox.yml"
 )
 
+// NeedsDocker checks if a config requires Docker (has services with `image` or `build`).
+func NeedsDocker(cfg *types.Config) bool {
+	if cfg == nil {
+		return false
+	}
+	for _, svc := range cfg.Services {
+		if svc.Image != "" || (svc.Build != nil && svc.Build.Context != "") {
+			return true
+		}
+	}
+	return false
+}
+
 // Parser handles parsing of devbox.yml configuration files.
 type Parser struct{}
 

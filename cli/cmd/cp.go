@@ -36,27 +36,88 @@ func runCP(cmd *cobra.Command, args []string) error {
 	src := args[0]
 	dst := args[1]
 
-	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	projectPath, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("docker not available: %w", err)
+		return fmt.Errorf("get project directory: %w", err)
 	}
 
-	ctx := context.Background()
+	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err == nil {
+		ctx := context.Background()
+		srcIsRemote := isRemoteRef(src)
+		dstIsRemote := isRemoteRef(dst)
 
+		if srcIsRemote && !dstIsRemote {
+			if err := checkWithinProject(dst); err != nil {
+				return err
+			}
+			return copyFromContainer(ctx, dockerClient, src, dst)
+		} else if !srcIsRemote && dstIsRemote {
+			return copyToContainer(ctx, dockerClient, src, dst)
+		}
+	}
+
+	// Docker unavailable: try host process file operations
+	return copyHostPath(projectPath, src, dst)
+}
+
+func copyHostPath(projectPath, src, dst string) error {
 	srcIsRemote := isRemoteRef(src)
 	dstIsRemote := isRemoteRef(dst)
 
 	if srcIsRemote && !dstIsRemote {
-		// Guard: local destination must be within the project directory
+		_, srcPath, err := parseRemoteRef(src)
+		if err != nil {
+			return err
+		}
+		absSrc := filepath.Join(projectPath, srcPath)
+		absDst, err := filepath.Abs(dst)
+		if err != nil {
+			return fmt.Errorf("resolve destination: %w", err)
+		}
 		if err := checkWithinProject(dst); err != nil {
 			return err
 		}
-		return copyFromContainer(ctx, dockerClient, src, dst)
+		return copyHostFile(absSrc, absDst)
 	} else if !srcIsRemote && dstIsRemote {
-		return copyToContainer(ctx, dockerClient, src, dst)
+		_, dstPath, err := parseRemoteRef(dst)
+		if err != nil {
+			return err
+		}
+		absDst := filepath.Join(projectPath, dstPath)
+		if err := os.MkdirAll(filepath.Dir(absDst), 0755); err != nil {
+			return fmt.Errorf("create parent directories: %w", err)
+		}
+		return copyHostFile(src, absDst)
 	}
 
 	return fmt.Errorf("usage: devbox cp <service>:<path> <local-path> or devbox cp <local-path> <service>:<path>")
+}
+
+func copyHostFile(src, dst string) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return fmt.Errorf("open source: %w", err)
+	}
+	defer srcFile.Close()
+
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return fmt.Errorf("create destination: %w", err)
+	}
+	defer dstFile.Close()
+
+	if _, err := io.Copy(dstFile, srcFile); err != nil {
+		return fmt.Errorf("copy file: %w", err)
+	}
+
+	srcInfo, err := os.Stat(src)
+	if err == nil {
+		os.Chmod(dst, srcInfo.Mode())
+	}
+
+	fmt.Printf("✓ Copied %s → %s\n", src, dst)
+	return nil
 }
 
 func checkWithinProject(localPath string) error {

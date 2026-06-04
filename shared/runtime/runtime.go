@@ -2,8 +2,12 @@ package runtime
 
 import (
 	"context"
+	"errors"
 	"io"
 )
+
+// ErrNotSupported is returned when the runtime does not support an operation.
+var ErrNotSupported = errors.New("operation not supported by this runtime")
 
 // ContainerConfig holds the configuration for creating a container.
 type ContainerConfig struct {

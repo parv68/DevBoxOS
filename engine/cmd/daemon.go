@@ -2,11 +2,13 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"log"
 	"net"
 	"os"
+	"os/exec"
 	"os/signal"
 	"path/filepath"
 	"strings"
@@ -21,6 +23,7 @@ import (
 	"github.com/devboxos/devboxos/shared/platform"
 	"github.com/devboxos/devboxos/shared/runtime"
 	"github.com/devboxos/devboxos/shared/runtime/docker"
+	"github.com/devboxos/devboxos/shared/runtime/host"
 	"github.com/devboxos/devboxos/shared/secrets"
 	"github.com/devboxos/devboxos/shared/snapshot"
 	"github.com/devboxos/devboxos/shared/types"
@@ -82,21 +85,32 @@ func (s *server) Start(req *pb.StartRequest, stream pb.EngineService_StartServer
 
 	send("info", fmt.Sprintf("Loaded %s (%d services)", cfg.Name, len(cfg.Services)), false)
 
-	// Create Docker runtime (persist for log collection)
+	// Choose runtime: Docker only if project has Docker services
+	needsDocker := config.NeedsDocker(cfg)
 	s.mu.Lock()
 	if s.rt == nil {
 		s.mu.Unlock()
-		rt := docker.NewDockerRuntime()
-		if err := rt.Connect(stream.Context()); err != nil {
-			send("error", fmt.Sprintf("Docker not available: %v", err), true)
-			return err
+		if needsDocker {
+			rt := docker.NewDockerRuntime()
+			if err := rt.Connect(stream.Context()); err != nil {
+				send("error", fmt.Sprintf("Docker not available: %v", err), true)
+				return err
+			}
+			s.mu.Lock()
+			s.rt = rt
+			s.mu.Unlock()
+			send("info", "Connected to Docker daemon", false)
+		} else {
+			rt := host.NewHostRuntime()
+			s.mu.Lock()
+			s.rt = rt
+			s.mu.Unlock()
+			send("info", "Using host process runtime (no Docker needed)", false)
 		}
-		s.mu.Lock()
-		s.rt = rt
+	} else {
+		s.mu.Unlock()
+		send("info", "Runtime already available", false)
 	}
-	s.mu.Unlock()
-
-	send("info", "Connected to Docker daemon", false)
 
 	// Create orchestrator
 	orch, err := orchestrator.NewOrchestrator(s.rt, req.ProjectPath, cfg)
@@ -254,14 +268,15 @@ func (s *server) Status(ctx context.Context, req *pb.StatusRequest) (*pb.StatusR
 }
 
 func (s *server) Logs(req *pb.LogsRequest, stream pb.EngineService_LogsServer) error {
-	// Create Docker runtime
-	rt := docker.NewDockerRuntime()
-	if err := rt.Connect(stream.Context()); err != nil {
-		return fmt.Errorf("docker not available: %w", err)
-	}
-	defer rt.Close()
+	s.mu.Lock()
+	rt := s.rt
+	s.mu.Unlock()
 
-	// Find container
+	if rt == nil {
+		return fmt.Errorf("no active environment. Run 'devbox start' first.")
+	}
+
+	// Find container/process
 	containers, err := rt.ListContainers(stream.Context(), map[string]string{
 		"devboxos.service": req.Service,
 	})
@@ -379,7 +394,7 @@ func (s *server) SnapshotLoad(req *pb.SnapshotLoadRequest, stream pb.EngineServi
 }
 
 func (s *server) SnapshotList(ctx context.Context, req *pb.SnapshotListRequest) (*pb.SnapshotListResponse, error) {
-	mgr := snapshot.NewManager(docker.NewDockerRuntime(), req.ProjectPath)
+	mgr := snapshot.NewManager(host.NewHostRuntime(), req.ProjectPath)
 	infos, err := mgr.List()
 	if err != nil {
 		return &pb.SnapshotListResponse{}, nil
@@ -399,7 +414,8 @@ func (s *server) SnapshotList(ctx context.Context, req *pb.SnapshotListRequest) 
 }
 
 func (s *server) SnapshotDelete(ctx context.Context, req *pb.SnapshotDeleteRequest) (*pb.StatusResponse, error) {
-	mgr := snapshot.NewManager(docker.NewDockerRuntime(), req.ProjectPath)
+	// Delete only needs filesystem access, not Docker
+	mgr := snapshot.NewManager(host.NewHostRuntime(), req.ProjectPath)
 	if err := mgr.Delete(req.SnapshotId); err != nil {
 		return &pb.StatusResponse{Status: "error", Error: err.Error()}, nil
 	}
@@ -581,9 +597,49 @@ func (s *server) Build(req *pb.BuildRequest, stream pb.EngineService_BuildServer
 }
 
 func (s *server) Exec(ctx context.Context, req *pb.ExecRequest) (*pb.ExecResponse, error) {
+	s.mu.Lock()
+	rt := s.rt
+	s.mu.Unlock()
+
+	// If we have a stored runtime, determine if it's Docker or Host
+	if rt != nil {
+		// Try to find the service's container/process via the runtime
+		containers, err := rt.ListContainers(ctx, map[string]string{
+			"devboxos.service": req.Service,
+		})
+		if err == nil && len(containers) > 0 {
+			id := containers[0].ID
+			info, err := rt.GetContainerInfo(ctx, id)
+			if err == nil {
+				// For host processes, spawn command directly
+				if info.Image == "" {
+					cmd := exec.CommandContext(ctx, req.Command, req.Args...)
+					var stdoutBuf, stderrBuf bytes.Buffer
+					cmd.Stdout = &stdoutBuf
+					cmd.Stderr = &stderrBuf
+					exitCode := 0
+					if err := cmd.Run(); err != nil {
+						if exitErr, ok := err.(*exec.ExitError); ok {
+							exitCode = exitErr.ExitCode()
+							// stderr already captured
+						} else {
+							exitCode = -1
+						}
+					}
+					return &pb.ExecResponse{
+						Stdout:   stdoutBuf.String(),
+						Stderr:   stderrBuf.String(),
+						ExitCode: int32(exitCode),
+					}, nil
+				}
+			}
+		}
+	}
+
+	// Fall back to Docker SDK for container-based services
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		return &pb.ExecResponse{Stderr: fmt.Sprintf("Docker not available: %v", err), ExitCode: -1}, nil
+		return &pb.ExecResponse{Stderr: fmt.Sprintf("Docker not available: %v\n\nService does not use Docker containers. Try running the command directly.", err), ExitCode: -1}, nil
 	}
 
 	containers, err := dockerClient.ContainerList(ctx, container.ListOptions{
@@ -642,44 +698,52 @@ func (s *server) Exec(ctx context.Context, req *pb.ExecRequest) (*pb.ExecRespons
 func (s *server) Doctor(ctx context.Context, req *pb.DoctorRequest) (*pb.DoctorResponse, error) {
 	var issues []*pb.DiagnosticIssue
 
-	// Check Docker
-	rt := docker.NewDockerRuntime()
-	if err := rt.Connect(ctx); err != nil {
-		issues = append(issues, &pb.DiagnosticIssue{
-			Severity: "error",
-			Message:  "Docker daemon is not running",
-			Details:  err.Error(),
-		})
-		issues = append(issues, &pb.DiagnosticIssue{
-			Severity: "info",
-			Message:  "Start Docker Desktop or run: systemctl start docker",
-		})
-	} else {
-		rt.Close()
-		issues = append(issues, &pb.DiagnosticIssue{
-			Severity: "info",
-			Message:  "Docker daemon is running",
-		})
-	}
-
 	// Check config
 	parser := config.NewParser()
-	cfg, err := parser.Parse(req.ProjectPath)
-	if err != nil {
+	cfg, parseErr := parser.Parse(req.ProjectPath)
+	if parseErr != nil {
 		issues = append(issues, &pb.DiagnosticIssue{
 			Severity: "error",
 			Message:  "No devbox.yml found",
-			Details:  err.Error(),
+			Details:  parseErr.Error(),
 		})
 		issues = append(issues, &pb.DiagnosticIssue{
 			Severity: "info",
 			Message:  "Run 'devbox init' to create a configuration",
 		})
 	} else {
+		needsDocker := config.NeedsDocker(cfg)
 		issues = append(issues, &pb.DiagnosticIssue{
 			Severity: "info",
 			Message:  fmt.Sprintf("Configuration valid: %s (%d services)", cfg.Name, len(cfg.Services)),
 		})
+
+		if needsDocker {
+			// Check Docker only if project needs it
+			rt := docker.NewDockerRuntime()
+			if err := rt.Connect(ctx); err != nil {
+				issues = append(issues, &pb.DiagnosticIssue{
+					Severity: "error",
+					Message:  "Docker daemon is not running (required by this project)",
+					Details:  err.Error(),
+				})
+				issues = append(issues, &pb.DiagnosticIssue{
+					Severity: "info",
+					Message:  "Start Docker Desktop or run: systemctl start docker",
+				})
+			} else {
+				rt.Close()
+				issues = append(issues, &pb.DiagnosticIssue{
+					Severity: "info",
+					Message:  "Docker daemon is running",
+				})
+			}
+		} else {
+			issues = append(issues, &pb.DiagnosticIssue{
+				Severity: "info",
+				Message:  "Project does not require Docker (using host process runtime)",
+			})
+		}
 	}
 
 	var suggestions []string
@@ -715,12 +779,13 @@ func (s *server) Reset(req *pb.ResetRequest, stream pb.EngineService_ResetServer
 		return nil
 	}
 
-	rt := docker.NewDockerRuntime()
-	if err := rt.Connect(stream.Context()); err != nil {
-		stream.Send(&pb.StreamResponse{Status: "error", Error: "Docker not available", Done: true})
+	s.mu.Lock()
+	rt := s.rt
+	s.mu.Unlock()
+	if rt == nil {
+		stream.Send(&pb.StreamResponse{Status: "error", Error: "No active environment. Run 'devbox start' first.", Done: true})
 		return nil
 	}
-	defer rt.Close()
 
 	orch, err := orchestrator.NewOrchestrator(rt, req.ProjectPath, cfg)
 	if err != nil {

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	devboxclient "github.com/devboxos/devboxos/cli/internal/client"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
@@ -58,17 +59,53 @@ func init() {
 
 func runTop(cmd *cobra.Command, args []string) error {
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err == nil {
+		ctx := context.Background()
+		for {
+			displayStats(ctx, dockerClient)
+			time.Sleep(time.Duration(topInterval) * time.Second)
+			clearLines(20)
+		}
+	}
+
+	// Docker unavailable: show engine status instead
+	return displayEngineStatus()
+}
+
+func displayEngineStatus() error {
+	cl, err := devboxclient.New()
 	if err != nil {
-		return fmt.Errorf("docker not available: %w", err)
+		return fmt.Errorf("Docker not available and engine not running: %w", err)
+	}
+	defer cl.Close()
+
+	status, err := cl.Status(".")
+	if err != nil {
+		return fmt.Errorf("get engine status: %w", err)
 	}
 
-	ctx := context.Background()
-
-	for {
-		displayStats(ctx, dockerClient)
-		time.Sleep(time.Duration(topInterval) * time.Second)
-		clearLines(20)
+	if status.Status != "running" {
+		fmt.Println("  No running services (run 'devbox start' first)")
+		return nil
 	}
+
+	sep := strings.Repeat("─", 60)
+	fmt.Printf("  %-20s %-12s %-8s  %s\n", "SERVICE", "STATUS", "HEALTH", "CONTAINER")
+	fmt.Printf("  %s\n", sep)
+
+	for _, svc := range status.Services {
+		health := svc.Health
+		if health == "" {
+			health = "-"
+		}
+		cid := svc.ContainerID
+		if len(cid) > 12 {
+			cid = cid[:12]
+		}
+		fmt.Printf("  %-20s %-12s %-8s  %s\n", svc.Name, svc.Status, health, cid)
+	}
+	fmt.Printf("\n  (Docker required for CPU/memory stats)\n")
+	return nil
 }
 
 func clearLines(n int) {

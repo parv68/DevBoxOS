@@ -42,7 +42,7 @@ func runPush(cmd *cobra.Command, args []string) error {
 
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		return fmt.Errorf("docker not available: %w", err)
+		return fmt.Errorf("docker not available: push requires Docker to be installed. If this project does not use Docker containers, push is not needed: %w", err)
 	}
 
 	ctx := context.Background()
