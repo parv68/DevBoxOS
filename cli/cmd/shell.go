@@ -8,7 +8,6 @@ import (
 	"os/exec"
 	"os/signal"
 
-	devboxclient "github.com/devboxos/devboxos/cli/internal/client"
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
@@ -37,25 +36,7 @@ func init() {
 func runShell(cmd *cobra.Command, args []string) error {
 	serviceName := args[0]
 
-	// Try gRPC Exec first (handles both Docker and host runtimes)
-	if cl, err := devboxclient.New(); err == nil {
-		defer cl.Close()
-		stdout, stderr, exitCode, err := cl.Exec(".", serviceName, "/bin/sh", nil)
-		if err == nil {
-			if stdout != "" {
-				fmt.Print(stdout)
-			}
-			if stderr != "" {
-				fmt.Fprint(os.Stderr, stderr)
-			}
-			if exitCode != 0 {
-				os.Exit(exitCode)
-			}
-			return nil
-		}
-	}
-
-	// Engine unavailable: try local Docker
+	// Try local Docker first (supports TTY)
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err == nil {
 		ctx := context.Background()

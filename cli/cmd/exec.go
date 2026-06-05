@@ -51,42 +51,24 @@ func runExec(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("get working directory: %w", err)
 	}
 
-	// For non-interactive commands, try gRPC first for engine integration
+	// For non-interactive commands, try gRPC first (handles both runtimes)
+	// Skip for shell commands — unary Exec can't attach TTY
 	if !isShellCommand(commandArgs[0]) {
 		if cl, err := devboxclient.New(); err == nil {
 			defer cl.Close()
 			stdout, stderr, exitCode, err := cl.Exec(projectPath, serviceName, commandArgs[0], commandArgs[1:])
-			if err != nil {
-				return err
+			if err == nil {
+				if stdout != "" {
+					fmt.Print(stdout)
+				}
+				if stderr != "" {
+					fmt.Fprint(os.Stderr, stderr)
+				}
+				if exitCode != 0 {
+					os.Exit(exitCode)
+				}
+				return nil
 			}
-			if stdout != "" {
-				fmt.Print(stdout)
-			}
-			if stderr != "" {
-				fmt.Fprint(os.Stderr, stderr)
-			}
-			if exitCode != 0 {
-				os.Exit(exitCode)
-			}
-			return nil
-		}
-	}
-
-	// Try gRPC first (handles both Docker and host runtimes)
-	if cl, err := devboxclient.New(); err == nil {
-		defer cl.Close()
-		stdout, stderr, exitCode, err := cl.Exec(projectPath, serviceName, commandArgs[0], commandArgs[1:])
-		if err == nil {
-			if stdout != "" {
-				fmt.Print(stdout)
-			}
-			if stderr != "" {
-				fmt.Fprint(os.Stderr, stderr)
-			}
-			if exitCode != 0 {
-				os.Exit(exitCode)
-			}
-			return nil
 		}
 	}
 

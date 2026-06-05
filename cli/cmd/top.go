@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -13,6 +14,7 @@ import (
 	"github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/api/types/filters"
 	"github.com/docker/docker/client"
+	"github.com/shirou/gopsutil/v3/process"
 	"github.com/spf13/cobra"
 )
 
@@ -37,6 +39,13 @@ type dockerStats struct {
 		Usage uint64 `json:"usage"`
 		Limit uint64 `json:"limit"`
 	} `json:"memory_stats"`
+}
+
+type processStat struct {
+	name   string
+	cpuPct float64
+	mem    uint64
+	memPct float64
 }
 
 var topCmd = &cobra.Command{
@@ -68,44 +77,107 @@ func runTop(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Docker unavailable: show engine status instead
-	return displayEngineStatus()
-}
-
-func displayEngineStatus() error {
+	// Docker unavailable: show host process stats via gopsutil
 	cl, err := devboxclient.New()
 	if err != nil {
 		return fmt.Errorf("Docker not available and engine not running: %w", err)
 	}
 	defer cl.Close()
 
+	for {
+		displayHostStats(cl)
+		time.Sleep(time.Duration(topInterval) * time.Second)
+		clearLines(20)
+	}
+}
+
+func displayHostStats(cl *devboxclient.Client) {
 	status, err := cl.Status(".")
 	if err != nil {
-		return fmt.Errorf("get engine status: %w", err)
+		fmt.Fprintf(os.Stderr, "  Engine status error: %v\n", err)
+		return
 	}
 
 	if status.Status != "running" {
 		fmt.Println("  No running services (run 'devbox start' first)")
-		return nil
+		return
 	}
 
-	sep := strings.Repeat("─", 60)
-	fmt.Printf("  %-20s %-12s %-8s  %s\n", "SERVICE", "STATUS", "HEALTH", "CONTAINER")
+	// Collect service names from engine
+	var svcNames []string
+	nameSet := make(map[string]bool)
+	for _, svc := range status.Services {
+		svcNames = append(svcNames, svc.Name)
+		nameSet[svc.Name] = true
+	}
+
+	// Scan host processes for matching command lines
+	procs, _ := process.Processes()
+	type procMatch struct {
+		name string
+		pid  int32
+		cpu  float64
+		mem  uint64
+		memPct float64
+	}
+	found := make(map[string]*procMatch)
+
+	for _, p := range procs {
+		cmdline, _ := p.Cmdline()
+		if cmdline == "" {
+			continue
+		}
+		for _, name := range svcNames {
+			if strings.Contains(cmdline, name) && !strings.Contains(cmdline, "devbox-engine") {
+				cpu, _ := p.CPUPercent()
+				memInfo, _ := p.MemoryInfo()
+				var mem uint64
+				if memInfo != nil {
+					mem = memInfo.RSS
+				}
+				memPct, _ := p.MemoryPercent()
+				found[name] = &procMatch{
+					name:    name,
+					pid:     p.Pid,
+					cpu:     cpu,
+					mem:     mem,
+					memPct:  float64(memPct),
+				}
+				break
+			}
+		}
+	}
+
+	// Convert to sorted slice
+	var stats []*procMatch
+	for _, p := range found {
+		stats = append(stats, p)
+	}
+	sort.Slice(stats, func(i, j int) bool { return stats[i].name < stats[j].name })
+
+	sep := strings.Repeat("─", 70)
+	fmt.Printf("  %-20s %-8s %-12s %-8s  %s\n", "SERVICE", "CPU%", "MEM", "MEM%", "PID")
 	fmt.Printf("  %s\n", sep)
 
-	for _, svc := range status.Services {
-		health := svc.Health
-		if health == "" {
-			health = "-"
+	for _, s := range stats {
+		pidStr := "-"
+		if s.pid > 0 {
+			pidStr = fmt.Sprintf("%d", s.pid)
 		}
-		cid := svc.ContainerID
-		if len(cid) > 12 {
-			cid = cid[:12]
-		}
-		fmt.Printf("  %-20s %-12s %-8s  %s\n", svc.Name, svc.Status, health, cid)
+		fmt.Printf("  %-20s %-8.1f %-12s %-8.1f  %s\n",
+			s.name,
+			s.cpu,
+			formatBytes(int64(s.mem)),
+			s.memPct,
+			pidStr)
 	}
-	fmt.Printf("\n  (Docker required for CPU/memory stats)\n")
-	return nil
+
+	// Show services without a found process
+	for _, name := range svcNames {
+		if found[name] == nil {
+			fmt.Printf("  %-20s %-8s %-12s %-8s  %s\n", name, "N/A", "N/A", "N/A", "-")
+		}
+	}
 }
 
 func clearLines(n int) {
