@@ -97,14 +97,14 @@ func (m *Manager) Save(ctx context.Context, cfg *types.Config, name string, incl
 				parts := strings.SplitN(volName, ":", 2)
 				if len(parts) == 2 {
 					volSnapshot := VolumeSnapshot{
-						Name: parts[1],
+						Name: parts[0],
 					}
 
-					volExists, _ := m.rt.VolumeExists(ctx, parts[1])
+					volExists, _ := m.rt.VolumeExists(ctx, parts[0])
 					if volExists {
-						exportPath := filepath.Join(m.store.SnapshotDir(id), fmt.Sprintf("vol-%s-%s.tar.gz", svcName, parts[1]))
-						if err := m.exportVolume(ctx, parts[1], exportPath, statusChan); err != nil {
-							statusChan <- fmt.Sprintf("Warning: could not export volume %s: %v", parts[1], err)
+						exportPath := filepath.Join(m.store.SnapshotDir(id), fmt.Sprintf("vol-%s-%s.tar.gz", svcName, sanitizeFileName(parts[0])))
+						if err := m.exportVolume(ctx, parts[0], exportPath, statusChan); err != nil {
+							statusChan <- fmt.Sprintf("Warning: could not export volume %s: %v", parts[0], err)
 						} else {
 							volSnapshot.Exported = true
 							volSnapshot.FileName = filepath.Base(exportPath)
@@ -405,10 +405,19 @@ func (m *Manager) Import(tarballPath string, statusChan chan<- string) error {
 	return nil
 }
 
-// exportVolume exports a Docker volume to a tar.gz file.
+// exportVolume exports a volume to a tar.gz file.
+// For host-accessible volumes (DirectoryRuntime), it tars the directory directly.
+// For Docker volumes, it uses a helper container.
 func (m *Manager) exportVolume(ctx context.Context, volName, outputPath string, statusChan chan<- string) error {
 	statusChan <- fmt.Sprintf("Exporting volume: %s", volName)
 
+	// Try direct filesystem export first (works for host runtime volumes)
+	volPath, err := m.rt.VolumePath(ctx, volName)
+	if err == nil && volPath != "" {
+		return tarDirectory(volPath, outputPath)
+	}
+
+	// Fall back to Docker container-based export
 	tmpDir, err := os.MkdirTemp("", "devbox-vol-export-*")
 	if err != nil {
 		return fmt.Errorf("create temp dir: %w", err)
@@ -462,7 +471,9 @@ func (m *Manager) exportVolume(ctx context.Context, volName, outputPath string, 
 	return nil
 }
 
-// importVolume imports a Docker volume from a tar.gz file.
+// importVolume imports a volume from a tar.gz file.
+// For host-accessible volumes (DirectoryRuntime), it untars directly into the directory.
+// For Docker volumes, it uses a helper container.
 func (m *Manager) importVolume(ctx context.Context, volName, inputPath string, statusChan chan<- string) error {
 	statusChan <- fmt.Sprintf("Importing volume: %s", volName)
 
@@ -470,6 +481,13 @@ func (m *Manager) importVolume(ctx context.Context, volName, inputPath string, s
 		return fmt.Errorf("create volume: %w", err)
 	}
 
+	// Try direct filesystem import first (works for host runtime volumes)
+	volPath, err := m.rt.VolumePath(ctx, volName)
+	if err == nil && volPath != "" {
+		return untarToDirectory(inputPath, volPath)
+	}
+
+	// Fall back to Docker container-based import
 	tmpDir, err := os.MkdirTemp("", "devbox-vol-import-*")
 	if err != nil {
 		return fmt.Errorf("create temp dir: %w", err)
@@ -487,11 +505,12 @@ func (m *Manager) importVolume(ctx context.Context, volName, inputPath string, s
 	if err != nil {
 		return fmt.Errorf("create temp file: %w", err)
 	}
-	dest.Close()
+	defer dest.Close()
 
 	if _, err := io.Copy(dest, src); err != nil {
 		return fmt.Errorf("copy input: %w", err)
 	}
+	dest.Close()
 
 	containerName := fmt.Sprintf("devbox-snapshot-import-%s", uuid.New().String()[:8])
 
@@ -521,6 +540,123 @@ func (m *Manager) importVolume(ctx context.Context, volName, inputPath string, s
 
 	statusChan <- fmt.Sprintf("Volume imported: %s", volName)
 	return nil
+}
+
+// tarDirectory creates a tar.gz of a directory.
+func tarDirectory(srcDir, outputPath string) error {
+	outFile, err := os.Create(outputPath)
+	if err != nil {
+		return fmt.Errorf("create tar: %w", err)
+	}
+	defer outFile.Close()
+
+	gzWriter := gzip.NewWriter(outFile)
+	defer gzWriter.Close()
+
+	tarWriter := tar.NewWriter(gzWriter)
+	defer tarWriter.Close()
+
+	return filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		relPath, err := filepath.Rel(srcDir, path)
+		if err != nil {
+			return err
+		}
+		if relPath == "." {
+			return nil
+		}
+
+		header, err := tar.FileInfoHeader(info, "")
+		if err != nil {
+			return err
+		}
+		header.Name = filepath.ToSlash(relPath)
+
+		if info.IsDir() {
+			header.Name += "/"
+		}
+
+		if err := tarWriter.WriteHeader(header); err != nil {
+			return err
+		}
+
+		if !info.IsDir() {
+			data, err := os.Open(path)
+			if err != nil {
+				return err
+			}
+			defer data.Close()
+			if _, err := io.Copy(tarWriter, data); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// untarToDirectory extracts a tar.gz into a directory.
+func untarToDirectory(inputPath, destDir string) error {
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return fmt.Errorf("create destination directory: %w", err)
+	}
+
+	inFile, err := os.Open(inputPath)
+	if err != nil {
+		return fmt.Errorf("open tar: %w", err)
+	}
+	defer inFile.Close()
+
+	gzReader, err := gzip.NewReader(inFile)
+	if err != nil {
+		return fmt.Errorf("create gzip reader: %w", err)
+	}
+	defer gzReader.Close()
+
+	tarReader := tar.NewReader(gzReader)
+	for {
+		header, err := tarReader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("read tar entry: %w", err)
+		}
+
+		target := filepath.Join(destDir, header.Name)
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(target, 0755); err != nil {
+				return err
+			}
+		case tar.TypeReg:
+			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+				return err
+			}
+			outFile, err := os.Create(target)
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(outFile, tarReader); err != nil {
+				outFile.Close()
+				return err
+			}
+			outFile.Close()
+		}
+	}
+	return nil
+}
+
+// sanitizeFileName replaces path separators and special characters
+// to produce a safe filename component.
+func sanitizeFileName(name string) string {
+	name = strings.ReplaceAll(name, "..", "_")
+	name = strings.ReplaceAll(name, "/", "_")
+	name = strings.ReplaceAll(name, "\\", "_")
+	name = strings.ReplaceAll(name, ":", "_")
+	return name
 }
 
 // waitForContainerExit polls container status until it exits or times out.

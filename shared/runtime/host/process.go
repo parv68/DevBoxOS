@@ -108,6 +108,7 @@ type HostRuntime struct {
 	nextID    int
 	processes map[string]*processInfo
 	logs      map[string]*logStream
+	volumeRoot string // Directory for volume storage
 }
 
 // NewHostRuntime creates a new host process runtime.
@@ -115,7 +116,15 @@ func NewHostRuntime() *HostRuntime {
 	return &HostRuntime{
 		processes: make(map[string]*processInfo),
 		logs:      make(map[string]*logStream),
+		volumeRoot: filepath.Join(os.TempDir(), "devbox-volumes"),
 	}
+}
+
+// SetVolumeRoot sets the directory where volumes are stored.
+func (h *HostRuntime) SetVolumeRoot(root string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	h.volumeRoot = root
 }
 
 func (h *HostRuntime) Connect(ctx context.Context) error {
@@ -413,13 +422,61 @@ func (h *HostRuntime) NetworkExists(ctx context.Context, name string) (bool, err
 }
 
 func (h *HostRuntime) CreateVolume(ctx context.Context, name string) error {
+	h.mu.Lock()
+	root := h.volumeRoot
+	h.mu.Unlock()
+
+	volPath := filepath.Join(root, sanitizeVolumeName(name))
+	if err := os.MkdirAll(volPath, 0755); err != nil {
+		return fmt.Errorf("create volume directory %s: %w", volPath, err)
+	}
 	return nil
 }
 
 func (h *HostRuntime) RemoveVolume(ctx context.Context, name string) error {
-	return nil
+	h.mu.Lock()
+	root := h.volumeRoot
+	h.mu.Unlock()
+
+	volPath := filepath.Join(root, sanitizeVolumeName(name))
+	return os.RemoveAll(volPath)
 }
 
 func (h *HostRuntime) VolumeExists(ctx context.Context, name string) (bool, error) {
-	return false, nil
+	h.mu.Lock()
+	root := h.volumeRoot
+	h.mu.Unlock()
+
+	volPath := filepath.Join(root, sanitizeVolumeName(name))
+	_, err := os.Stat(volPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
+func (h *HostRuntime) VolumePath(ctx context.Context, name string) (string, error) {
+	h.mu.Lock()
+	root := h.volumeRoot
+	h.mu.Unlock()
+
+	volPath := filepath.Join(root, sanitizeVolumeName(name))
+	_, err := os.Stat(volPath)
+	if err != nil {
+		return "", err
+	}
+	return volPath, nil
+}
+
+// sanitizeVolumeName replaces path separators with underscores to prevent
+// directory traversal and ensure legal directory names.
+func sanitizeVolumeName(name string) string {
+	name = strings.ReplaceAll(name, "..", "_")
+	name = strings.ReplaceAll(name, "/", "_")
+	name = strings.ReplaceAll(name, "\\", "_")
+	name = strings.ReplaceAll(name, ":", "_")
+	return name
 }

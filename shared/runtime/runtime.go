@@ -119,4 +119,9 @@ type Runtime interface {
 
 	// VolumeExists checks if a volume exists.
 	VolumeExists(ctx context.Context, name string) (bool, error)
+
+	// VolumePath returns the host filesystem path for a volume, if directly accessible.
+	// Returns ErrNotSupported if the volume cannot be accessed from the host filesystem
+	// (e.g. Docker named volumes in internal storage).
+	VolumePath(ctx context.Context, name string) (string, error)
 }

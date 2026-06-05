@@ -246,3 +246,8 @@ func (m *MockRuntime) VolumeExists(ctx context.Context, name string) (bool, erro
 	_, ok := m.volumes[name]
 	return ok, nil
 }
+
+func (m *MockRuntime) VolumePath(ctx context.Context, name string) (string, error) {
+	m.inc("VolumePath")
+	return "", nil
+}

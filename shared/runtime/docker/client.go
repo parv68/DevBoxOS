@@ -571,6 +571,13 @@ func (d *DockerRuntime) VolumeExists(ctx context.Context, name string) (bool, er
 	return true, nil
 }
 
+// VolumePath returns the host path for a Docker volume.
+// Docker volumes are stored in Docker's internal storage, so they are not
+// directly accessible from the host filesystem.
+func (d *DockerRuntime) VolumePath(ctx context.Context, name string) (string, error) {
+	return "", fmt.Errorf("%w: Docker volumes are not directly accessible from host", runtime.ErrNotSupported)
+}
+
 // parseMemory parses a memory string like "512m" or "1g" into bytes.
 func parseMemory(s string) (int64, error) {
 	var multiplier int64 = 1

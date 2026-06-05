@@ -102,6 +102,7 @@ func (s *server) Start(req *pb.StartRequest, stream pb.EngineService_StartServer
 			send("info", "Connected to Docker daemon", false)
 		} else {
 			rt := host.NewHostRuntime()
+			rt.SetVolumeRoot(filepath.Join(req.ProjectPath, ".devbox", "volumes"))
 			s.mu.Lock()
 			s.rt = rt
 			s.mu.Unlock()
@@ -326,12 +327,19 @@ func (s *server) SnapshotSave(req *pb.SnapshotSaveRequest, stream pb.EngineServi
 		return nil
 	}
 
-	rt := docker.NewDockerRuntime()
-	if err := rt.Connect(stream.Context()); err != nil {
-		stream.Send(&pb.StreamResponse{Status: "error", Error: "Docker not available", Done: true})
-		return nil
+	// Use stored runtime if available, otherwise create host runtime
+	s.mu.Lock()
+	rt := s.rt
+	s.mu.Unlock()
+	var hr *host.HostRuntime
+	if rt == nil {
+		hr = host.NewHostRuntime()
+		hr.SetVolumeRoot(filepath.Join(req.ProjectPath, ".devbox", "volumes"))
+		rt = hr
+	} else if h, ok := rt.(*host.HostRuntime); ok {
+		h.SetVolumeRoot(filepath.Join(req.ProjectPath, ".devbox", "volumes"))
+		hr = h
 	}
-	defer rt.Close()
 
 	statusChan := make(chan string, 64)
 	done := make(chan error, 1)
@@ -360,12 +368,17 @@ func (s *server) SnapshotSave(req *pb.SnapshotSaveRequest, stream pb.EngineServi
 }
 
 func (s *server) SnapshotLoad(req *pb.SnapshotLoadRequest, stream pb.EngineService_SnapshotLoadServer) error {
-	rt := docker.NewDockerRuntime()
-	if err := rt.Connect(stream.Context()); err != nil {
-		stream.Send(&pb.StreamResponse{Status: "error", Error: "Docker not available", Done: true})
-		return nil
+	// Use stored runtime if available, otherwise create host runtime
+	s.mu.Lock()
+	rt := s.rt
+	s.mu.Unlock()
+	if rt == nil {
+		hr := host.NewHostRuntime()
+		hr.SetVolumeRoot(filepath.Join(req.ProjectPath, ".devbox", "volumes"))
+		rt = hr
+	} else if hr, ok := rt.(*host.HostRuntime); ok {
+		hr.SetVolumeRoot(filepath.Join(req.ProjectPath, ".devbox", "volumes"))
 	}
-	defer rt.Close()
 
 	statusChan := make(chan string, 64)
 	done := make(chan error, 1)
@@ -423,14 +436,7 @@ func (s *server) SnapshotDelete(ctx context.Context, req *pb.SnapshotDeleteReque
 }
 
 func (s *server) SnapshotExport(req *pb.SnapshotExportRequest, stream pb.EngineService_SnapshotExportServer) error {
-	rt := docker.NewDockerRuntime()
-	if err := rt.Connect(stream.Context()); err != nil {
-		stream.Send(&pb.StreamResponse{Status: "error", Error: "Docker not available", Done: true})
-		return nil
-	}
-	defer rt.Close()
-
-	mgr := snapshot.NewManager(rt, req.ProjectPath)
+	mgr := snapshot.NewManager(host.NewHostRuntime(), req.ProjectPath)
 
 	// If no snapshot ID provided, find the latest
 	snapshotID := req.SnapshotId
@@ -468,14 +474,7 @@ func (s *server) SnapshotExport(req *pb.SnapshotExportRequest, stream pb.EngineS
 }
 
 func (s *server) SnapshotImport(req *pb.SnapshotImportRequest, stream pb.EngineService_SnapshotImportServer) error {
-	rt := docker.NewDockerRuntime()
-	if err := rt.Connect(stream.Context()); err != nil {
-		stream.Send(&pb.StreamResponse{Status: "error", Error: "Docker not available", Done: true})
-		return nil
-	}
-	defer rt.Close()
-
-	mgr := snapshot.NewManager(rt, req.ProjectPath)
+	mgr := snapshot.NewManager(host.NewHostRuntime(), req.ProjectPath)
 
 	statusChan := make(chan string, 64)
 	done := make(chan error, 1)
