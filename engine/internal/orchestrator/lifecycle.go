@@ -13,17 +13,16 @@ import (
 
 // Lifecycle manages the start/stop/restart lifecycle of services.
 type Lifecycle struct {
-	runtime   runtime.Runtime
-	resolver  *secrets.Resolver
+	resolver *secrets.Resolver
 }
 
 // NewLifecycle creates a new service lifecycle manager.
-func NewLifecycle(rt runtime.Runtime, resolver *secrets.Resolver) *Lifecycle {
-	return &Lifecycle{runtime: rt, resolver: resolver}
+func NewLifecycle(resolver *secrets.Resolver) *Lifecycle {
+	return &Lifecycle{resolver: resolver}
 }
 
-// StartService starts a single service.
-func (l *Lifecycle) StartService(ctx context.Context, name string, svc types.Service, networkName string, projectPath string, statusChan chan<- string) (string, error) {
+// StartService starts a single service using the given runtime.
+func (l *Lifecycle) StartService(ctx context.Context, rt runtime.Runtime, name string, svc types.Service, networkName string, projectPath string, statusChan chan<- string) (string, error) {
 	// Build container config
 	cfg := runtime.ContainerConfig{
 		Name:       fmt.Sprintf("devbox-%s", name),
@@ -116,34 +115,34 @@ func (l *Lifecycle) StartService(ctx context.Context, name string, svc types.Ser
 			Target:     svc.Build.Target,
 		}
 
-		builtImage, err := l.runtime.BuildImage(ctx, buildCfg, statusChan)
+		builtImage, err := rt.BuildImage(ctx, buildCfg, statusChan)
 		if err != nil {
 			return "", fmt.Errorf("build image for %s: %w", name, err)
 		}
 		cfg.Image = builtImage
 	} else if svc.Image != "" {
 		// Pull image if no build config
-		if err := l.runtime.PullImage(ctx, svc.Image); err != nil {
+		if err := rt.PullImage(ctx, svc.Image); err != nil {
 			return "", fmt.Errorf("pull image %s: %w", svc.Image, err)
 		}
 	}
 
 	// Remove existing container if present
-	existingContainers, _ := l.runtime.ListContainers(ctx, map[string]string{
+	existingContainers, _ := rt.ListContainers(ctx, map[string]string{
 		"devboxos.service": name,
 	})
 	for _, existing := range existingContainers {
-		_ = l.runtime.RemoveContainer(ctx, existing.ID, true)
+		_ = rt.RemoveContainer(ctx, existing.ID, true)
 	}
 
 	// Create container
-	containerID, err := l.runtime.CreateContainer(ctx, cfg)
+	containerID, err := rt.CreateContainer(ctx, cfg)
 	if err != nil {
 		return "", fmt.Errorf("create container for %s: %w", name, err)
 	}
 
 	// Start container
-	if err := l.runtime.StartContainer(ctx, containerID); err != nil {
+	if err := rt.StartContainer(ctx, containerID); err != nil {
 		return "", fmt.Errorf("start container for %s: %w", name, err)
 	}
 
@@ -151,20 +150,20 @@ func (l *Lifecycle) StartService(ctx context.Context, name string, svc types.Ser
 }
 
 // StopService stops a single service.
-func (l *Lifecycle) StopService(ctx context.Context, containerID string, gracePeriod int) error {
-	if err := l.runtime.StopContainer(ctx, containerID, gracePeriod); err != nil {
+func (l *Lifecycle) StopService(ctx context.Context, rt runtime.Runtime, containerID string, gracePeriod int) error {
+	if err := rt.StopContainer(ctx, containerID, gracePeriod); err != nil {
 		return fmt.Errorf("stop container %s: %w", containerID, err)
 	}
 	return nil
 }
 
 // RemoveService removes a service container.
-func (l *Lifecycle) RemoveService(ctx context.Context, containerID string) error {
-	return l.runtime.RemoveContainer(ctx, containerID, true)
+func (l *Lifecycle) RemoveService(ctx context.Context, rt runtime.Runtime, containerID string) error {
+	return rt.RemoveContainer(ctx, containerID, true)
 }
 
 // WaitForHealthy waits for a service to become healthy.
-func (l *Lifecycle) WaitForHealthy(ctx context.Context, containerID string, svc types.Service) error {
+func (l *Lifecycle) WaitForHealthy(ctx context.Context, rt runtime.Runtime, containerID string, svc types.Service) error {
 	if svc.Healthcheck == nil {
 		// No health check defined, assume healthy after brief delay
 		time.Sleep(2 * time.Second)
@@ -199,7 +198,7 @@ func (l *Lifecycle) WaitForHealthy(ctx context.Context, containerID string, svc 
 		case <-time.After(time.Until(deadline)):
 			return fmt.Errorf("service did not become healthy within %s", startPeriod)
 		case <-ticker.C:
-			info, err := l.runtime.GetContainerInfo(ctx, containerID)
+			info, err := rt.GetContainerInfo(ctx, containerID)
 			if err != nil {
 				continue
 			}

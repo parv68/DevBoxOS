@@ -1,0 +1,9 @@
+name: react-vite
+version: "1.0"
+
+services:
+  web:
+    command: npx vite --port 5173 --host
+    port: "5173"
+    env:
+      NODE_ENV: development
