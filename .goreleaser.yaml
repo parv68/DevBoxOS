@@ -4,9 +4,9 @@ project_name: devbox
 
 before:
   hooks:
-    - cd shared && go mod tidy
-    - cd engine && go mod tidy
-    - cd cli && go mod tidy
+    - go mod tidy -C shared
+    - go mod tidy -C engine
+    - go mod tidy -C cli
 
 builds:
   - id: cli
