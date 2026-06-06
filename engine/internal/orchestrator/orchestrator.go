@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/devboxos/devboxos/engine/internal/networking"
+	"github.com/devboxos/devboxos/shared/config"
 	"github.com/devboxos/devboxos/shared/logging"
 	"github.com/devboxos/devboxos/shared/plugins"
 	"github.com/devboxos/devboxos/shared/runtime"
@@ -16,18 +17,21 @@ import (
 
 // Orchestrator manages the full lifecycle of a DevBoxOS environment.
 type Orchestrator struct {
-	rt          runtime.Runtime
+	dockerRT    runtime.Runtime // nil if Docker unavailable
+	hostRT      runtime.Runtime // always available
 	lifecycle   *Lifecycle
 	resolver    *secrets.Resolver
 	pluginMgr   *plugins.Manager
 	logStore    *logging.Store
 	collectors  map[string]*logging.Collector
 	environment *types.EnvironmentStatus
+	containerRT map[string]runtime.Runtime // maps containerID → runtime
 	mu          sync.Mutex
 }
 
-// NewOrchestrator creates a new environment orchestrator.
-func NewOrchestrator(rt runtime.Runtime, projectPath string, cfg *types.Config) (*Orchestrator, error) {
+// NewOrchestrator creates a new environment orchestrator with two runtimes.
+// dockerRT may be nil if Docker is not available.
+func NewOrchestrator(dockerRT, hostRT runtime.Runtime, projectPath string, cfg *types.Config) (*Orchestrator, error) {
 	keyPath := filepath.Join(projectPath, ".devbox", "secrets.key")
 	storePath := filepath.Join(projectPath, ".devbox", "secrets.enc")
 
@@ -37,16 +41,43 @@ func NewOrchestrator(rt runtime.Runtime, projectPath string, cfg *types.Config) 
 	}
 
 	return &Orchestrator{
-		rt:         rt,
-		lifecycle:  NewLifecycle(rt, resolver),
+		dockerRT:   dockerRT,
+		hostRT:     hostRT,
+		lifecycle:  NewLifecycle(resolver),
 		resolver:   resolver,
 		pluginMgr:  plugins.NewManager(projectPath, cfg.Plugins),
 		logStore:   logging.NewStore(projectPath),
 		collectors: make(map[string]*logging.Collector),
+		containerRT: make(map[string]runtime.Runtime),
 		environment: &types.EnvironmentStatus{
 			Status: "stopped",
 		},
 	}, nil
+}
+
+// RuntimeForService returns the runtime that should be used for a given service.
+func (o *Orchestrator) RuntimeForService(name string) runtime.Runtime {
+	o.mu.Lock()
+	defer o.mu.Unlock()
+	// First check if we have a container mapping from a previous Start
+	for id, rt := range o.containerRT {
+		info, err := rt.GetContainerInfo(context.Background(), id)
+		if err == nil && info.Labels["devboxos.service"] == name {
+			return rt
+		}
+	}
+	return o.hostRT
+}
+
+// RuntimeForConfig picks the best runtime for a service based on its config.
+func RuntimeForConfig(svc types.Service, dockerAvailable bool) runtime.Runtime {
+	if config.NeedsDockerService(svc) {
+		if dockerAvailable {
+			return nil // caller must create DockerRuntime
+		}
+		return nil // Docker needed but not available — caller handles error
+	}
+	return nil // HostRuntime — caller uses this
 }
 
 // Start starts all services in dependency order.
@@ -56,6 +87,7 @@ func (o *Orchestrator) Start(ctx context.Context, cfg *types.Config, projectPath
 	o.environment.Path = projectPath
 	o.environment.Status = "starting"
 	o.environment.Services = nil
+	o.containerRT = make(map[string]runtime.Runtime)
 	o.mu.Unlock()
 
 	// Step 1: Build dependency graph
@@ -87,7 +119,7 @@ func (o *Orchestrator) Start(ctx context.Context, cfg *types.Config, projectPath
 
 	// Step 3: Create/verify project network
 	statusChan <- fmt.Sprintf("Setting up network for %s...", cfg.Name)
-	netMgr := networking.NewManager(o.rt)
+	netMgr := networking.NewManager(o.hostRT)
 	nw, err := netMgr.EnsureNetwork(ctx, cfg.Name)
 	if err != nil {
 		return fmt.Errorf("setup network: %w", err)
@@ -129,6 +161,13 @@ func (o *Orchestrator) Start(ctx context.Context, cfg *types.Config, projectPath
 
 		statusChan <- fmt.Sprintf("Starting service: %s", name)
 
+		// Pick the right runtime for this service
+		rt := o.resolveRuntime(svc, name, statusChan)
+		if rt == nil {
+			o.cleanup(ctx, containerIDs)
+			return fmt.Errorf("service %s: Docker required (%s: no command specified)", name, svc.Image)
+		}
+
 		// Check port conflicts for this specific service
 		if svc.Port != "" {
 			hostPort := svc.Port
@@ -147,13 +186,16 @@ func (o *Orchestrator) Start(ctx context.Context, cfg *types.Config, projectPath
 		}
 
 		// Build container config with networking
-		containerID, err := o.lifecycle.StartService(ctx, name, svc, nw.Name, projectPath, statusChan)
+		containerID, err := o.lifecycle.StartService(ctx, rt, name, svc, nw.Name, projectPath, statusChan)
 		if err != nil {
 			o.cleanup(ctx, containerIDs)
 			return fmt.Errorf("start service %s: %w", name, err)
 		}
 
 		containerIDs[name] = containerID
+		o.mu.Lock()
+		o.containerRT[containerID] = rt
+		o.mu.Unlock()
 		nw.RegisterContainer(name, containerID)
 
 		// Register DNS entry
@@ -161,7 +203,7 @@ func (o *Orchestrator) Start(ctx context.Context, cfg *types.Config, projectPath
 
 		// Wait for health check
 		statusChan <- fmt.Sprintf("Waiting for %s to be healthy...", name)
-		if err := o.lifecycle.WaitForHealthy(ctx, containerID, svc); err != nil {
+		if err := o.lifecycle.WaitForHealthy(ctx, rt, containerID, svc); err != nil {
 			statusChan <- fmt.Sprintf("Warning: %s health check: %v", name, err)
 		}
 
@@ -180,7 +222,7 @@ func (o *Orchestrator) Start(ctx context.Context, cfg *types.Config, projectPath
 		o.mu.Unlock()
 
 		// Start collection safely; the orchestrator tracks collectors via the mutex above.
-		collector.Start(context.Background(), o.rt, containerID)
+		collector.Start(context.Background(), rt, containerID)
 	}
 
 	// Update status
@@ -201,6 +243,38 @@ func (o *Orchestrator) Start(ctx context.Context, cfg *types.Config, projectPath
 
 	statusChan <- "All services started"
 	return nil
+}
+
+// resolveRuntime picks the right runtime for a service.
+func (o *Orchestrator) resolveRuntime(svc types.Service, name string, statusChan chan<- string) runtime.Runtime {
+	switch {
+	case svc.Build != nil && svc.Build.Context != "":
+		// Build always needs Docker
+		if o.dockerRT != nil {
+			statusChan <- fmt.Sprintf("Service %s: using Docker runtime (build)", name)
+			return o.dockerRT
+		}
+		statusChan <- fmt.Sprintf("Service %s: ERROR — build requires Docker", name)
+		return nil
+
+	case config.NeedsDockerService(svc):
+		// image: with no command: — needs Docker
+		if o.dockerRT != nil {
+			statusChan <- fmt.Sprintf("Service %s: using Docker runtime", name)
+			return o.dockerRT
+		}
+		statusChan <- fmt.Sprintf("Service %s: ERROR — Docker required (image %s has no command)", name, svc.Image)
+		return nil
+
+	default:
+		// command: only OR image: + command: — can run on host
+		if svc.Image != "" {
+			statusChan <- fmt.Sprintf("Service %s: using host runtime (Docker would add isolation but is not required)", name)
+		} else {
+			statusChan <- fmt.Sprintf("Service %s: using host runtime", name)
+		}
+		return o.hostRT
+	}
 }
 
 // Stop stops all services in reverse dependency order.
@@ -239,7 +313,22 @@ func (o *Orchestrator) Stop(ctx context.Context, cfg *types.Config, gracePeriod 
 
 		statusChan <- fmt.Sprintf("Stopping service: %s", name)
 
-		containers, err := o.rt.ListContainers(ctx, map[string]string{
+		// Find containers for this service across all runtimes
+		o.mu.Lock()
+		var rt runtime.Runtime
+		for id, r := range o.containerRT {
+			info, err := r.GetContainerInfo(context.Background(), id)
+			if err == nil && info.Labels["devboxos.service"] == name {
+				rt = r
+				break
+			}
+		}
+		if rt == nil {
+			rt = o.hostRT
+		}
+		o.mu.Unlock()
+
+		containers, err := rt.ListContainers(ctx, map[string]string{
 			"devboxos.service": name,
 		})
 		if err != nil {
@@ -248,7 +337,7 @@ func (o *Orchestrator) Stop(ctx context.Context, cfg *types.Config, gracePeriod 
 		}
 
 		for _, c := range containers {
-			if err := o.lifecycle.StopService(ctx, c.ID, gracePeriod); err != nil {
+			if err := o.lifecycle.StopService(ctx, rt, c.ID, gracePeriod); err != nil {
 				statusChan <- fmt.Sprintf("Warning: could not stop %s: %v", name, err)
 			}
 		}
@@ -267,6 +356,7 @@ func (o *Orchestrator) Stop(ctx context.Context, cfg *types.Config, gracePeriod 
 	o.mu.Lock()
 	o.environment.Status = "stopped"
 	o.environment.Services = nil
+	o.containerRT = make(map[string]runtime.Runtime)
 	o.mu.Unlock()
 
 	// Run post-stop plugins
@@ -289,7 +379,8 @@ func (o *Orchestrator) Status(ctx context.Context, cfg *types.Config) (*types.En
 	runningCount := 0
 
 	for name := range cfg.Services {
-		containers, err := o.rt.ListContainers(ctx, map[string]string{
+		rt := o.RuntimeForService(name)
+		containers, err := rt.ListContainers(ctx, map[string]string{
 			"devboxos.service": name,
 		})
 		if err != nil {
@@ -316,7 +407,7 @@ func (o *Orchestrator) Status(ctx context.Context, cfg *types.Config) (*types.En
 	return o.environment, nil
 }
 
-// updateStatus refreshes the environment status from Docker.
+// updateStatus refreshes the environment status from the container runtimes.
 func (o *Orchestrator) updateStatus(ctx context.Context, containerIDs map[string]string) {
 	o.mu.Lock()
 	defer o.mu.Unlock()
@@ -324,7 +415,11 @@ func (o *Orchestrator) updateStatus(ctx context.Context, containerIDs map[string
 	o.environment.Services = nil
 
 	for name, id := range containerIDs {
-		info, err := o.rt.GetContainerInfo(ctx, id)
+		rt := o.containerRT[id]
+		if rt == nil {
+			rt = o.hostRT
+		}
+		info, err := rt.GetContainerInfo(ctx, id)
 		if err != nil {
 			o.environment.Services = append(o.environment.Services, types.ServiceStatus{
 				Name:   name,
@@ -355,7 +450,6 @@ func (o *Orchestrator) checkPortConflicts(cfg *types.Config) error {
 		if svc.Port == "" {
 			continue
 		}
-		// Extract host port from "host:container" or just "port"
 		hostPort := svc.Port
 		if idx := len(svc.Port) - 1; idx > 0 {
 			for i := idx; i >= 0; i-- {
@@ -375,8 +469,12 @@ func (o *Orchestrator) checkPortConflicts(cfg *types.Config) error {
 // cleanup stops and removes started containers on failure.
 func (o *Orchestrator) cleanup(ctx context.Context, containerIDs map[string]string) {
 	for name, id := range containerIDs {
-		_ = o.lifecycle.StopService(ctx, id, 10)
-		_ = o.lifecycle.RemoveService(ctx, id)
+		rt := o.containerRT[id]
+		if rt == nil {
+			rt = o.hostRT
+		}
+		_ = o.lifecycle.StopService(ctx, rt, id, 10)
+		_ = o.lifecycle.RemoveService(ctx, rt, id)
 		_ = fmt.Sprintf("Cleaned up container: %s", name)
 	}
 }

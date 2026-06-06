@@ -19,9 +19,26 @@ func NeedsDocker(cfg *types.Config) bool {
 		return false
 	}
 	for _, svc := range cfg.Services {
-		if svc.Image != "" || (svc.Build != nil && svc.Build.Context != "") {
+		if NeedsDockerService(svc) {
 			return true
 		}
+	}
+	return false
+}
+
+// NeedsDockerService checks if a single service requires Docker.
+// A service needs Docker when:
+//   - it has `build:` (building an image is Docker-only)
+//   - it has `image:` with no `command:` (the image's default CMD/ENTRYPOINT runs in Docker)
+//
+// A service with both `image:` and `command:` does NOT need Docker —
+// the command can run directly on the host.
+func NeedsDockerService(svc types.Service) bool {
+	if svc.Build != nil && svc.Build.Context != "" {
+		return true
+	}
+	if svc.Image != "" && svc.Command == "" {
+		return true
 	}
 	return false
 }
@@ -83,7 +100,6 @@ func (p *Parser) Generate(dir string, name string) error {
 		Version: "1.0",
 		Services: map[string]types.Service{
 			"api": {
-				Image:   "node:18",
 				Command: "npm run dev",
 				Port:    "3000",
 			},

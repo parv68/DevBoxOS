@@ -28,7 +28,6 @@ func AutoDetect(dir string) (*types.Config, error) {
 		}
 
 		cfg.Services["api"] = types.Service{
-			Image:   fmt.Sprintf("node:%s", version),
 			Command: "npm run dev",
 			Port:    "3000",
 		}

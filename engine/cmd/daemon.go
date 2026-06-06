@@ -41,7 +41,9 @@ type server struct {
 	startedAt    time.Time
 	stateMgr     *state.Manager
 	orchestrator *orchestrator.Orchestrator
-	rt           runtime.Runtime
+	rt           runtime.Runtime // backward compat, points to hostRt
+	hostRt       runtime.Runtime
+	dockerRt     runtime.Runtime
 	mu           sync.Mutex
 }
 
@@ -88,24 +90,30 @@ func (s *server) Start(req *pb.StartRequest, stream pb.EngineService_StartServer
 	// Choose runtime: Docker only if project has Docker services
 	needsDocker := config.NeedsDocker(cfg)
 	s.mu.Lock()
-	if s.rt == nil {
+	if s.hostRt == nil {
 		s.mu.Unlock()
+
+		// Always create host runtime
+		hostRt := host.NewHostRuntime()
+		hostRt.SetVolumeRoot(filepath.Join(req.ProjectPath, ".devbox", "volumes"))
+
+		var dockerRt runtime.Runtime
 		if needsDocker {
-			rt := docker.NewDockerRuntime()
-			if err := rt.Connect(stream.Context()); err != nil {
+			dockerRt = docker.NewDockerRuntime()
+			if err := dockerRt.Connect(stream.Context()); err != nil {
 				send("error", fmt.Sprintf("Docker not available: %v", err), true)
 				return err
 			}
-			s.mu.Lock()
-			s.rt = rt
-			s.mu.Unlock()
 			send("info", "Connected to Docker daemon", false)
-		} else {
-			rt := host.NewHostRuntime()
-			rt.SetVolumeRoot(filepath.Join(req.ProjectPath, ".devbox", "volumes"))
-			s.mu.Lock()
-			s.rt = rt
-			s.mu.Unlock()
+		}
+
+		s.mu.Lock()
+		s.hostRt = hostRt
+		s.dockerRt = dockerRt
+		s.rt = hostRt
+		s.mu.Unlock()
+
+		if !needsDocker {
 			send("info", "Using host process runtime (no Docker needed)", false)
 		}
 	} else {
@@ -113,8 +121,8 @@ func (s *server) Start(req *pb.StartRequest, stream pb.EngineService_StartServer
 		send("info", "Runtime already available", false)
 	}
 
-	// Create orchestrator
-	orch, err := orchestrator.NewOrchestrator(s.rt, req.ProjectPath, cfg)
+	// Create orchestrator with both runtimes
+	orch, err := orchestrator.NewOrchestrator(s.dockerRt, s.hostRt, req.ProjectPath, cfg)
 	if err != nil {
 		send("error", fmt.Sprintf("Failed to create orchestrator: %v", err), true)
 		return err
@@ -779,14 +787,15 @@ func (s *server) Reset(req *pb.ResetRequest, stream pb.EngineService_ResetServer
 	}
 
 	s.mu.Lock()
-	rt := s.rt
+	hostRt := s.hostRt
+	dockerRt := s.dockerRt
 	s.mu.Unlock()
-	if rt == nil {
+	if hostRt == nil {
 		stream.Send(&pb.StreamResponse{Status: "error", Error: "No active environment. Run 'devbox start' first.", Done: true})
 		return nil
 	}
 
-	orch, err := orchestrator.NewOrchestrator(rt, req.ProjectPath, cfg)
+	orch, err := orchestrator.NewOrchestrator(dockerRt, hostRt, req.ProjectPath, cfg)
 	if err != nil {
 		stream.Send(&pb.StreamResponse{Status: "error", Error: err.Error(), Done: true})
 		return nil
