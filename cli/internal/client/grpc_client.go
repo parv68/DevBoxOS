@@ -174,6 +174,9 @@ func (c *Client) Start(dir string, statusCallback func(status, msg string)) erro
 			if resp.Error != "" {
 				return fmt.Errorf("%s", resp.Error)
 			}
+			if resp.Status == "error" {
+				return fmt.Errorf("%s", resp.Message)
+			}
 			return nil
 		}
 	}
@@ -284,6 +287,9 @@ func (c *Client) Reset(dir string) error {
 		if resp.Done {
 			if resp.Error != "" {
 				return fmt.Errorf("%s", resp.Error)
+			}
+			if resp.Status == "error" {
+				return fmt.Errorf("%s", resp.Message)
 			}
 			return nil
 		}
@@ -409,6 +415,9 @@ func (c *Client) SnapshotSave(projectPath, name string, includeLogs bool, status
 			if resp.Error != "" {
 				return fmt.Errorf("%s", resp.Error)
 			}
+			if resp.Status == "error" {
+				return fmt.Errorf("%s", resp.Message)
+			}
 			return nil
 		}
 	}
@@ -442,6 +451,9 @@ func (c *Client) SnapshotLoad(projectPath, snapshotId string, force bool, status
 		if resp.Done {
 			if resp.Error != "" {
 				return fmt.Errorf("%s", resp.Error)
+			}
+			if resp.Status == "error" {
+				return fmt.Errorf("%s", resp.Message)
 			}
 			return nil
 		}
@@ -510,6 +522,9 @@ func (c *Client) SnapshotExport(projectPath, exportPath, snapshotID string, stat
 			if resp.Error != "" {
 				return fmt.Errorf("%s", resp.Error)
 			}
+			if resp.Status == "error" {
+				return fmt.Errorf("%s", resp.Message)
+			}
 			return nil
 		}
 	}
@@ -543,6 +558,9 @@ func (c *Client) SnapshotImport(projectPath, importPath string, force bool, stat
 		if resp.Done {
 			if resp.Error != "" {
 				return fmt.Errorf("%s", resp.Error)
+			}
+			if resp.Status == "error" {
+				return fmt.Errorf("%s", resp.Message)
 			}
 			return nil
 		}
@@ -578,6 +596,9 @@ func (c *Client) Build(projectPath, service string, noCache, pull bool, statusCa
 		if resp.Done {
 			if resp.Error != "" {
 				return fmt.Errorf("%s", resp.Error)
+			}
+			if resp.Status == "error" {
+				return fmt.Errorf("%s", resp.Message)
 			}
 			return nil
 		}

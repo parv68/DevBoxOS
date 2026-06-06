@@ -56,11 +56,15 @@ func (s *server) Ping(ctx context.Context, req *pb.PingRequest) (*pb.PingRespons
 
 func (s *server) Start(req *pb.StartRequest, stream pb.EngineService_StartServer) error {
 	send := func(status, msg string, done bool) {
-		stream.Send(&pb.StreamResponse{
+		resp := &pb.StreamResponse{
 			Status:  status,
 			Message: msg,
 			Done:    done,
-		})
+		}
+		if done && status == "error" {
+			resp.Error = msg
+		}
+		stream.Send(resp)
 	}
 
 	// Parse config
@@ -511,11 +515,15 @@ func (s *server) SnapshotImport(req *pb.SnapshotImportRequest, stream pb.EngineS
 
 func (s *server) Build(req *pb.BuildRequest, stream pb.EngineService_BuildServer) error {
 	send := func(status, msg string, done bool) {
-		stream.Send(&pb.StreamResponse{
+		resp := &pb.StreamResponse{
 			Status:  status,
 			Message: msg,
 			Done:    done,
-		})
+		}
+		if done && status == "error" {
+			resp.Error = msg
+		}
+		stream.Send(resp)
 	}
 
 	parser := config.NewParser()
