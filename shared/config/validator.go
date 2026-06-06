@@ -69,8 +69,8 @@ func (v *Validator) Validate(cfg *types.Config) []error {
 
 	// Validate service definitions
 	for name, svc := range cfg.Services {
-		if svc.Image == "" && svc.Runtime == "" && svc.Build == nil {
-			errs = append(errs, fmt.Errorf("service '%s' must define image, runtime, or build", name))
+		if svc.Image == "" && svc.Runtime == "" && svc.Build == nil && svc.Command == "" {
+			errs = append(errs, fmt.Errorf("service '%s' must define image, runtime, build, or command", name))
 		}
 	}
 

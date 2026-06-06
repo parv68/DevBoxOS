@@ -148,7 +148,7 @@ func TestValidator_NoServices(t *testing.T) {
 	}
 }
 
-func TestValidator_ServiceNoImageRuntimeOrBuild(t *testing.T) {
+func TestValidator_ServiceCommandOnlyIsValid(t *testing.T) {
 	v, _ := NewValidator()
 	cfg := &types.Config{
 		Name:    "test-app",
@@ -161,8 +161,24 @@ func TestValidator_ServiceNoImageRuntimeOrBuild(t *testing.T) {
 	}
 
 	errs := v.Validate(cfg)
-	if !containsError(errs, "web") || !containsError(errs, "image") {
-		t.Errorf("expected error about missing image/runtime/build for 'web', got %v", errs)
+	if containsError(errs, "image") {
+		t.Errorf("command-only service should be valid, got errors: %v", errs)
+	}
+}
+
+func TestValidator_ServiceEmptyDefinition(t *testing.T) {
+	v, _ := NewValidator()
+	cfg := &types.Config{
+		Name:    "test-app",
+		Version: "1.0",
+		Services: map[string]types.Service{
+			"web": {},
+		},
+	}
+
+	errs := v.Validate(cfg)
+	if !containsError(errs, "web") {
+		t.Errorf("expected error about empty service 'web', got %v", errs)
 	}
 }
 
