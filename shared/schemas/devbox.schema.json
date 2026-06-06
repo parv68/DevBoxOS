@@ -27,10 +27,11 @@
       "minProperties": 1,
       "additionalProperties": {
         "type": "object",
-        "oneOf": [
+        "anyOf": [
           { "required": ["image"] },
           { "required": ["runtime"] },
-          { "required": ["build"] }
+          { "required": ["build"] },
+          { "required": ["command"] }
         ],
         "properties": {
           "image": { "type": "string" },

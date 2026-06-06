@@ -1,9 +1,13 @@
 name: react-vite
 version: "1.0"
-
+runtimes:
+    node: "18"
 services:
-  web:
-    command: npx vite --port 5173 --host
-    port: "5173"
-    env:
-      NODE_ENV: development
+    api:
+        command: npm run dev
+        port: "3000"
+networking:
+    discovery: true
+    expose:
+        - 3000
+    egress: default-deny
