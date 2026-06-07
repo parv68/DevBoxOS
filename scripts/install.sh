@@ -56,7 +56,7 @@ get_latest_version() {
             grep '"tag_name"' | \
             sed -E 's/.*"([^"]+)".*/\1/' | \
             grep -v -- '-rc\|-alpha\|-beta' | \
-            sed 's/^v//' | \
+            sed 's/^v//; s/-.*//' | \
             sort -t. -k1,1n -k2,2n -k3,3n | \
             tail -1 | \
             sed 's/^/v/')
