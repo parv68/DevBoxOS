@@ -21,6 +21,78 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type ShutdownRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ShutdownRequest) Reset() {
+	*x = ShutdownRequest{}
+	mi := &file_engine_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ShutdownRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ShutdownRequest) ProtoMessage() {}
+
+func (x *ShutdownRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_engine_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ShutdownRequest.ProtoReflect.Descriptor instead.
+func (*ShutdownRequest) Descriptor() ([]byte, []int) {
+	return file_engine_proto_rawDescGZIP(), []int{0}
+}
+
+type ShutdownResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ShutdownResponse) Reset() {
+	*x = ShutdownResponse{}
+	mi := &file_engine_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ShutdownResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ShutdownResponse) ProtoMessage() {}
+
+func (x *ShutdownResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_engine_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ShutdownResponse.ProtoReflect.Descriptor instead.
+func (*ShutdownResponse) Descriptor() ([]byte, []int) {
+	return file_engine_proto_rawDescGZIP(), []int{1}
+}
+
 type PingRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -29,7 +101,7 @@ type PingRequest struct {
 
 func (x *PingRequest) Reset() {
 	*x = PingRequest{}
-	mi := &file_engine_proto_msgTypes[0]
+	mi := &file_engine_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -41,7 +113,7 @@ func (x *PingRequest) String() string {
 func (*PingRequest) ProtoMessage() {}
 
 func (x *PingRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[0]
+	mi := &file_engine_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -54,7 +126,7 @@ func (x *PingRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PingRequest.ProtoReflect.Descriptor instead.
 func (*PingRequest) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{0}
+	return file_engine_proto_rawDescGZIP(), []int{2}
 }
 
 type PingResponse struct {
@@ -67,7 +139,7 @@ type PingResponse struct {
 
 func (x *PingResponse) Reset() {
 	*x = PingResponse{}
-	mi := &file_engine_proto_msgTypes[1]
+	mi := &file_engine_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -79,7 +151,7 @@ func (x *PingResponse) String() string {
 func (*PingResponse) ProtoMessage() {}
 
 func (x *PingResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[1]
+	mi := &file_engine_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -92,7 +164,7 @@ func (x *PingResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PingResponse.ProtoReflect.Descriptor instead.
 func (*PingResponse) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{1}
+	return file_engine_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *PingResponse) GetVersion() string {
@@ -119,7 +191,7 @@ type StartRequest struct {
 
 func (x *StartRequest) Reset() {
 	*x = StartRequest{}
-	mi := &file_engine_proto_msgTypes[2]
+	mi := &file_engine_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -131,7 +203,7 @@ func (x *StartRequest) String() string {
 func (*StartRequest) ProtoMessage() {}
 
 func (x *StartRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[2]
+	mi := &file_engine_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -144,7 +216,7 @@ func (x *StartRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StartRequest.ProtoReflect.Descriptor instead.
 func (*StartRequest) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{2}
+	return file_engine_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *StartRequest) GetProjectPath() string {
@@ -172,7 +244,7 @@ type StopRequest struct {
 
 func (x *StopRequest) Reset() {
 	*x = StopRequest{}
-	mi := &file_engine_proto_msgTypes[3]
+	mi := &file_engine_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -184,7 +256,7 @@ func (x *StopRequest) String() string {
 func (*StopRequest) ProtoMessage() {}
 
 func (x *StopRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[3]
+	mi := &file_engine_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -197,7 +269,7 @@ func (x *StopRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StopRequest.ProtoReflect.Descriptor instead.
 func (*StopRequest) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{3}
+	return file_engine_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *StopRequest) GetProjectPath() string {
@@ -230,7 +302,7 @@ type StatusRequest struct {
 
 func (x *StatusRequest) Reset() {
 	*x = StatusRequest{}
-	mi := &file_engine_proto_msgTypes[4]
+	mi := &file_engine_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -242,7 +314,7 @@ func (x *StatusRequest) String() string {
 func (*StatusRequest) ProtoMessage() {}
 
 func (x *StatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[4]
+	mi := &file_engine_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -255,7 +327,7 @@ func (x *StatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatusRequest.ProtoReflect.Descriptor instead.
 func (*StatusRequest) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{4}
+	return file_engine_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *StatusRequest) GetProjectPath() string {
@@ -278,7 +350,7 @@ type LogsRequest struct {
 
 func (x *LogsRequest) Reset() {
 	*x = LogsRequest{}
-	mi := &file_engine_proto_msgTypes[5]
+	mi := &file_engine_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -290,7 +362,7 @@ func (x *LogsRequest) String() string {
 func (*LogsRequest) ProtoMessage() {}
 
 func (x *LogsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[5]
+	mi := &file_engine_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -303,7 +375,7 @@ func (x *LogsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogsRequest.ProtoReflect.Descriptor instead.
 func (*LogsRequest) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{5}
+	return file_engine_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *LogsRequest) GetProjectPath() string {
@@ -354,7 +426,7 @@ type LogEntry struct {
 
 func (x *LogEntry) Reset() {
 	*x = LogEntry{}
-	mi := &file_engine_proto_msgTypes[6]
+	mi := &file_engine_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -366,7 +438,7 @@ func (x *LogEntry) String() string {
 func (*LogEntry) ProtoMessage() {}
 
 func (x *LogEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[6]
+	mi := &file_engine_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -379,7 +451,7 @@ func (x *LogEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LogEntry.ProtoReflect.Descriptor instead.
 func (*LogEntry) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{6}
+	return file_engine_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *LogEntry) GetService() string {
@@ -428,7 +500,7 @@ type StatusResponse struct {
 
 func (x *StatusResponse) Reset() {
 	*x = StatusResponse{}
-	mi := &file_engine_proto_msgTypes[7]
+	mi := &file_engine_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -440,7 +512,7 @@ func (x *StatusResponse) String() string {
 func (*StatusResponse) ProtoMessage() {}
 
 func (x *StatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[7]
+	mi := &file_engine_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -453,7 +525,7 @@ func (x *StatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StatusResponse.ProtoReflect.Descriptor instead.
 func (*StatusResponse) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{7}
+	return file_engine_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *StatusResponse) GetStatus() string {
@@ -491,7 +563,7 @@ type ServiceStatus struct {
 
 func (x *ServiceStatus) Reset() {
 	*x = ServiceStatus{}
-	mi := &file_engine_proto_msgTypes[8]
+	mi := &file_engine_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -503,7 +575,7 @@ func (x *ServiceStatus) String() string {
 func (*ServiceStatus) ProtoMessage() {}
 
 func (x *ServiceStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[8]
+	mi := &file_engine_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -516,7 +588,7 @@ func (x *ServiceStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ServiceStatus.ProtoReflect.Descriptor instead.
 func (*ServiceStatus) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{8}
+	return file_engine_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ServiceStatus) GetName() string {
@@ -573,7 +645,7 @@ type StreamResponse struct {
 
 func (x *StreamResponse) Reset() {
 	*x = StreamResponse{}
-	mi := &file_engine_proto_msgTypes[9]
+	mi := &file_engine_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -585,7 +657,7 @@ func (x *StreamResponse) String() string {
 func (*StreamResponse) ProtoMessage() {}
 
 func (x *StreamResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[9]
+	mi := &file_engine_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -598,7 +670,7 @@ func (x *StreamResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StreamResponse.ProtoReflect.Descriptor instead.
 func (*StreamResponse) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{9}
+	return file_engine_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *StreamResponse) GetStatus() string {
@@ -640,7 +712,7 @@ type SnapshotSaveRequest struct {
 
 func (x *SnapshotSaveRequest) Reset() {
 	*x = SnapshotSaveRequest{}
-	mi := &file_engine_proto_msgTypes[10]
+	mi := &file_engine_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -652,7 +724,7 @@ func (x *SnapshotSaveRequest) String() string {
 func (*SnapshotSaveRequest) ProtoMessage() {}
 
 func (x *SnapshotSaveRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[10]
+	mi := &file_engine_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -665,7 +737,7 @@ func (x *SnapshotSaveRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SnapshotSaveRequest.ProtoReflect.Descriptor instead.
 func (*SnapshotSaveRequest) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{10}
+	return file_engine_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *SnapshotSaveRequest) GetProjectPath() string {
@@ -701,7 +773,7 @@ type SnapshotLoadRequest struct {
 
 func (x *SnapshotLoadRequest) Reset() {
 	*x = SnapshotLoadRequest{}
-	mi := &file_engine_proto_msgTypes[11]
+	mi := &file_engine_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -713,7 +785,7 @@ func (x *SnapshotLoadRequest) String() string {
 func (*SnapshotLoadRequest) ProtoMessage() {}
 
 func (x *SnapshotLoadRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[11]
+	mi := &file_engine_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -726,7 +798,7 @@ func (x *SnapshotLoadRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SnapshotLoadRequest.ProtoReflect.Descriptor instead.
 func (*SnapshotLoadRequest) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{11}
+	return file_engine_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *SnapshotLoadRequest) GetProjectPath() string {
@@ -766,7 +838,7 @@ type SnapshotListRequest struct {
 
 func (x *SnapshotListRequest) Reset() {
 	*x = SnapshotListRequest{}
-	mi := &file_engine_proto_msgTypes[12]
+	mi := &file_engine_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -778,7 +850,7 @@ func (x *SnapshotListRequest) String() string {
 func (*SnapshotListRequest) ProtoMessage() {}
 
 func (x *SnapshotListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[12]
+	mi := &file_engine_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -791,7 +863,7 @@ func (x *SnapshotListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SnapshotListRequest.ProtoReflect.Descriptor instead.
 func (*SnapshotListRequest) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{12}
+	return file_engine_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *SnapshotListRequest) GetProjectPath() string {
@@ -810,7 +882,7 @@ type SnapshotListResponse struct {
 
 func (x *SnapshotListResponse) Reset() {
 	*x = SnapshotListResponse{}
-	mi := &file_engine_proto_msgTypes[13]
+	mi := &file_engine_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -822,7 +894,7 @@ func (x *SnapshotListResponse) String() string {
 func (*SnapshotListResponse) ProtoMessage() {}
 
 func (x *SnapshotListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[13]
+	mi := &file_engine_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -835,7 +907,7 @@ func (x *SnapshotListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SnapshotListResponse.ProtoReflect.Descriptor instead.
 func (*SnapshotListResponse) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{13}
+	return file_engine_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *SnapshotListResponse) GetSnapshots() []*Snapshot {
@@ -859,7 +931,7 @@ type Snapshot struct {
 
 func (x *Snapshot) Reset() {
 	*x = Snapshot{}
-	mi := &file_engine_proto_msgTypes[14]
+	mi := &file_engine_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -871,7 +943,7 @@ func (x *Snapshot) String() string {
 func (*Snapshot) ProtoMessage() {}
 
 func (x *Snapshot) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[14]
+	mi := &file_engine_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -884,7 +956,7 @@ func (x *Snapshot) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Snapshot.ProtoReflect.Descriptor instead.
 func (*Snapshot) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{14}
+	return file_engine_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *Snapshot) GetId() string {
@@ -939,7 +1011,7 @@ type SnapshotDeleteRequest struct {
 
 func (x *SnapshotDeleteRequest) Reset() {
 	*x = SnapshotDeleteRequest{}
-	mi := &file_engine_proto_msgTypes[15]
+	mi := &file_engine_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -951,7 +1023,7 @@ func (x *SnapshotDeleteRequest) String() string {
 func (*SnapshotDeleteRequest) ProtoMessage() {}
 
 func (x *SnapshotDeleteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[15]
+	mi := &file_engine_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -964,7 +1036,7 @@ func (x *SnapshotDeleteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SnapshotDeleteRequest.ProtoReflect.Descriptor instead.
 func (*SnapshotDeleteRequest) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{15}
+	return file_engine_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *SnapshotDeleteRequest) GetProjectPath() string {
@@ -991,7 +1063,7 @@ type DoctorRequest struct {
 
 func (x *DoctorRequest) Reset() {
 	*x = DoctorRequest{}
-	mi := &file_engine_proto_msgTypes[16]
+	mi := &file_engine_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1003,7 +1075,7 @@ func (x *DoctorRequest) String() string {
 func (*DoctorRequest) ProtoMessage() {}
 
 func (x *DoctorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[16]
+	mi := &file_engine_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1016,7 +1088,7 @@ func (x *DoctorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DoctorRequest.ProtoReflect.Descriptor instead.
 func (*DoctorRequest) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{16}
+	return file_engine_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *DoctorRequest) GetProjectPath() string {
@@ -1043,7 +1115,7 @@ type DoctorResponse struct {
 
 func (x *DoctorResponse) Reset() {
 	*x = DoctorResponse{}
-	mi := &file_engine_proto_msgTypes[17]
+	mi := &file_engine_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1055,7 +1127,7 @@ func (x *DoctorResponse) String() string {
 func (*DoctorResponse) ProtoMessage() {}
 
 func (x *DoctorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[17]
+	mi := &file_engine_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1068,7 +1140,7 @@ func (x *DoctorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DoctorResponse.ProtoReflect.Descriptor instead.
 func (*DoctorResponse) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{17}
+	return file_engine_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *DoctorResponse) GetIssues() []*DiagnosticIssue {
@@ -1097,7 +1169,7 @@ type DiagnosticIssue struct {
 
 func (x *DiagnosticIssue) Reset() {
 	*x = DiagnosticIssue{}
-	mi := &file_engine_proto_msgTypes[18]
+	mi := &file_engine_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1109,7 +1181,7 @@ func (x *DiagnosticIssue) String() string {
 func (*DiagnosticIssue) ProtoMessage() {}
 
 func (x *DiagnosticIssue) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[18]
+	mi := &file_engine_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1122,7 +1194,7 @@ func (x *DiagnosticIssue) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DiagnosticIssue.ProtoReflect.Descriptor instead.
 func (*DiagnosticIssue) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{18}
+	return file_engine_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *DiagnosticIssue) GetSeverity() string {
@@ -1163,7 +1235,7 @@ type ResetRequest struct {
 
 func (x *ResetRequest) Reset() {
 	*x = ResetRequest{}
-	mi := &file_engine_proto_msgTypes[19]
+	mi := &file_engine_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1175,7 +1247,7 @@ func (x *ResetRequest) String() string {
 func (*ResetRequest) ProtoMessage() {}
 
 func (x *ResetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[19]
+	mi := &file_engine_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1188,7 +1260,7 @@ func (x *ResetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResetRequest.ProtoReflect.Descriptor instead.
 func (*ResetRequest) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{19}
+	return file_engine_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *ResetRequest) GetProjectPath() string {
@@ -1216,7 +1288,7 @@ type SecretSetRequest struct {
 
 func (x *SecretSetRequest) Reset() {
 	*x = SecretSetRequest{}
-	mi := &file_engine_proto_msgTypes[20]
+	mi := &file_engine_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1228,7 +1300,7 @@ func (x *SecretSetRequest) String() string {
 func (*SecretSetRequest) ProtoMessage() {}
 
 func (x *SecretSetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[20]
+	mi := &file_engine_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1241,7 +1313,7 @@ func (x *SecretSetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecretSetRequest.ProtoReflect.Descriptor instead.
 func (*SecretSetRequest) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{20}
+	return file_engine_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *SecretSetRequest) GetProjectPath() string {
@@ -1275,7 +1347,7 @@ type SecretGetRequest struct {
 
 func (x *SecretGetRequest) Reset() {
 	*x = SecretGetRequest{}
-	mi := &file_engine_proto_msgTypes[21]
+	mi := &file_engine_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1287,7 +1359,7 @@ func (x *SecretGetRequest) String() string {
 func (*SecretGetRequest) ProtoMessage() {}
 
 func (x *SecretGetRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[21]
+	mi := &file_engine_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1300,7 +1372,7 @@ func (x *SecretGetRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecretGetRequest.ProtoReflect.Descriptor instead.
 func (*SecretGetRequest) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{21}
+	return file_engine_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *SecretGetRequest) GetProjectPath() string {
@@ -1328,7 +1400,7 @@ type SecretGetResponse struct {
 
 func (x *SecretGetResponse) Reset() {
 	*x = SecretGetResponse{}
-	mi := &file_engine_proto_msgTypes[22]
+	mi := &file_engine_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1340,7 +1412,7 @@ func (x *SecretGetResponse) String() string {
 func (*SecretGetResponse) ProtoMessage() {}
 
 func (x *SecretGetResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[22]
+	mi := &file_engine_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1353,7 +1425,7 @@ func (x *SecretGetResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecretGetResponse.ProtoReflect.Descriptor instead.
 func (*SecretGetResponse) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{22}
+	return file_engine_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *SecretGetResponse) GetName() string {
@@ -1386,7 +1458,7 @@ type SecretListRequest struct {
 
 func (x *SecretListRequest) Reset() {
 	*x = SecretListRequest{}
-	mi := &file_engine_proto_msgTypes[23]
+	mi := &file_engine_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1398,7 +1470,7 @@ func (x *SecretListRequest) String() string {
 func (*SecretListRequest) ProtoMessage() {}
 
 func (x *SecretListRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[23]
+	mi := &file_engine_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1411,7 +1483,7 @@ func (x *SecretListRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecretListRequest.ProtoReflect.Descriptor instead.
 func (*SecretListRequest) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{23}
+	return file_engine_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *SecretListRequest) GetProjectPath() string {
@@ -1431,7 +1503,7 @@ type SecretListResponse struct {
 
 func (x *SecretListResponse) Reset() {
 	*x = SecretListResponse{}
-	mi := &file_engine_proto_msgTypes[24]
+	mi := &file_engine_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1443,7 +1515,7 @@ func (x *SecretListResponse) String() string {
 func (*SecretListResponse) ProtoMessage() {}
 
 func (x *SecretListResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[24]
+	mi := &file_engine_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1456,7 +1528,7 @@ func (x *SecretListResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecretListResponse.ProtoReflect.Descriptor instead.
 func (*SecretListResponse) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{24}
+	return file_engine_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *SecretListResponse) GetSecrets() []*SecretEntry {
@@ -1485,7 +1557,7 @@ type SecretEntry struct {
 
 func (x *SecretEntry) Reset() {
 	*x = SecretEntry{}
-	mi := &file_engine_proto_msgTypes[25]
+	mi := &file_engine_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1497,7 +1569,7 @@ func (x *SecretEntry) String() string {
 func (*SecretEntry) ProtoMessage() {}
 
 func (x *SecretEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[25]
+	mi := &file_engine_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1510,7 +1582,7 @@ func (x *SecretEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecretEntry.ProtoReflect.Descriptor instead.
 func (*SecretEntry) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{25}
+	return file_engine_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *SecretEntry) GetName() string {
@@ -1551,7 +1623,7 @@ type SecretDeleteRequest struct {
 
 func (x *SecretDeleteRequest) Reset() {
 	*x = SecretDeleteRequest{}
-	mi := &file_engine_proto_msgTypes[26]
+	mi := &file_engine_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1563,7 +1635,7 @@ func (x *SecretDeleteRequest) String() string {
 func (*SecretDeleteRequest) ProtoMessage() {}
 
 func (x *SecretDeleteRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[26]
+	mi := &file_engine_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1576,7 +1648,7 @@ func (x *SecretDeleteRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecretDeleteRequest.ProtoReflect.Descriptor instead.
 func (*SecretDeleteRequest) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{26}
+	return file_engine_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *SecretDeleteRequest) GetProjectPath() string {
@@ -1603,7 +1675,7 @@ type SecretRotateRequest struct {
 
 func (x *SecretRotateRequest) Reset() {
 	*x = SecretRotateRequest{}
-	mi := &file_engine_proto_msgTypes[27]
+	mi := &file_engine_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1615,7 +1687,7 @@ func (x *SecretRotateRequest) String() string {
 func (*SecretRotateRequest) ProtoMessage() {}
 
 func (x *SecretRotateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[27]
+	mi := &file_engine_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1628,7 +1700,7 @@ func (x *SecretRotateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SecretRotateRequest.ProtoReflect.Descriptor instead.
 func (*SecretRotateRequest) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{27}
+	return file_engine_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *SecretRotateRequest) GetProjectPath() string {
@@ -1656,7 +1728,7 @@ type SnapshotExportRequest struct {
 
 func (x *SnapshotExportRequest) Reset() {
 	*x = SnapshotExportRequest{}
-	mi := &file_engine_proto_msgTypes[28]
+	mi := &file_engine_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1668,7 +1740,7 @@ func (x *SnapshotExportRequest) String() string {
 func (*SnapshotExportRequest) ProtoMessage() {}
 
 func (x *SnapshotExportRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[28]
+	mi := &file_engine_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1681,7 +1753,7 @@ func (x *SnapshotExportRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SnapshotExportRequest.ProtoReflect.Descriptor instead.
 func (*SnapshotExportRequest) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{28}
+	return file_engine_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *SnapshotExportRequest) GetProjectPath() string {
@@ -1716,7 +1788,7 @@ type SnapshotImportRequest struct {
 
 func (x *SnapshotImportRequest) Reset() {
 	*x = SnapshotImportRequest{}
-	mi := &file_engine_proto_msgTypes[29]
+	mi := &file_engine_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1728,7 +1800,7 @@ func (x *SnapshotImportRequest) String() string {
 func (*SnapshotImportRequest) ProtoMessage() {}
 
 func (x *SnapshotImportRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[29]
+	mi := &file_engine_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1741,7 +1813,7 @@ func (x *SnapshotImportRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SnapshotImportRequest.ProtoReflect.Descriptor instead.
 func (*SnapshotImportRequest) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{29}
+	return file_engine_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *SnapshotImportRequest) GetProjectPath() string {
@@ -1777,7 +1849,7 @@ type BuildRequest struct {
 
 func (x *BuildRequest) Reset() {
 	*x = BuildRequest{}
-	mi := &file_engine_proto_msgTypes[30]
+	mi := &file_engine_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1789,7 +1861,7 @@ func (x *BuildRequest) String() string {
 func (*BuildRequest) ProtoMessage() {}
 
 func (x *BuildRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[30]
+	mi := &file_engine_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1802,7 +1874,7 @@ func (x *BuildRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BuildRequest.ProtoReflect.Descriptor instead.
 func (*BuildRequest) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{30}
+	return file_engine_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *BuildRequest) GetProjectPath() string {
@@ -1845,7 +1917,7 @@ type ExecRequest struct {
 
 func (x *ExecRequest) Reset() {
 	*x = ExecRequest{}
-	mi := &file_engine_proto_msgTypes[31]
+	mi := &file_engine_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1857,7 +1929,7 @@ func (x *ExecRequest) String() string {
 func (*ExecRequest) ProtoMessage() {}
 
 func (x *ExecRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[31]
+	mi := &file_engine_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1870,7 +1942,7 @@ func (x *ExecRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExecRequest.ProtoReflect.Descriptor instead.
 func (*ExecRequest) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{31}
+	return file_engine_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *ExecRequest) GetProjectPath() string {
@@ -1912,7 +1984,7 @@ type ExecResponse struct {
 
 func (x *ExecResponse) Reset() {
 	*x = ExecResponse{}
-	mi := &file_engine_proto_msgTypes[32]
+	mi := &file_engine_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1924,7 +1996,7 @@ func (x *ExecResponse) String() string {
 func (*ExecResponse) ProtoMessage() {}
 
 func (x *ExecResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_engine_proto_msgTypes[32]
+	mi := &file_engine_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1937,7 +2009,7 @@ func (x *ExecResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ExecResponse.ProtoReflect.Descriptor instead.
 func (*ExecResponse) Descriptor() ([]byte, []int) {
-	return file_engine_proto_rawDescGZIP(), []int{32}
+	return file_engine_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *ExecResponse) GetStdout() string {
@@ -1965,7 +2037,9 @@ var File_engine_proto protoreflect.FileDescriptor
 
 const file_engine_proto_rawDesc = "" +
 	"\n" +
-	"\fengine.proto\x12\x06engine\"\r\n" +
+	"\fengine.proto\x12\x06engine\"\x11\n" +
+	"\x0fShutdownRequest\"\x12\n" +
+	"\x10ShutdownResponse\"\r\n" +
 	"\vPingRequest\"@\n" +
 	"\fPingResponse\x12\x18\n" +
 	"\aversion\x18\x01 \x01(\tR\aversion\x12\x16\n" +
@@ -2102,7 +2176,7 @@ const file_engine_proto_rawDesc = "" +
 	"\fExecResponse\x12\x16\n" +
 	"\x06stdout\x18\x01 \x01(\tR\x06stdout\x12\x16\n" +
 	"\x06stderr\x18\x02 \x01(\tR\x06stderr\x12\x1b\n" +
-	"\texit_code\x18\x03 \x01(\x05R\bexitCode2\x80\n" +
+	"\texit_code\x18\x03 \x01(\x05R\bexitCode2\xbf\n" +
 	"\n" +
 	"\rEngineService\x127\n" +
 	"\x05Start\x12\x14.engine.StartRequest\x1a\x16.engine.StreamResponse0\x01\x123\n" +
@@ -2125,7 +2199,8 @@ const file_engine_proto_rawDesc = "" +
 	"\x0eSnapshotExport\x12\x1d.engine.SnapshotExportRequest\x1a\x16.engine.StreamResponse0\x01\x12I\n" +
 	"\x0eSnapshotImport\x12\x1d.engine.SnapshotImportRequest\x1a\x16.engine.StreamResponse0\x01\x127\n" +
 	"\x05Build\x12\x14.engine.BuildRequest\x1a\x16.engine.StreamResponse0\x01\x121\n" +
-	"\x04Exec\x12\x13.engine.ExecRequest\x1a\x14.engine.ExecResponseB4Z2github.com/devboxos/devboxos/engine/proto;enginepbb\x06proto3"
+	"\x04Exec\x12\x13.engine.ExecRequest\x1a\x14.engine.ExecResponse\x12=\n" +
+	"\bShutdown\x12\x17.engine.ShutdownRequest\x1a\x18.engine.ShutdownResponseB4Z2github.com/devboxos/devboxos/engine/proto;enginepbb\x06proto3"
 
 var (
 	file_engine_proto_rawDescOnce sync.Once
@@ -2139,89 +2214,93 @@ func file_engine_proto_rawDescGZIP() []byte {
 	return file_engine_proto_rawDescData
 }
 
-var file_engine_proto_msgTypes = make([]protoimpl.MessageInfo, 33)
+var file_engine_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
 var file_engine_proto_goTypes = []any{
-	(*PingRequest)(nil),           // 0: engine.PingRequest
-	(*PingResponse)(nil),          // 1: engine.PingResponse
-	(*StartRequest)(nil),          // 2: engine.StartRequest
-	(*StopRequest)(nil),           // 3: engine.StopRequest
-	(*StatusRequest)(nil),         // 4: engine.StatusRequest
-	(*LogsRequest)(nil),           // 5: engine.LogsRequest
-	(*LogEntry)(nil),              // 6: engine.LogEntry
-	(*StatusResponse)(nil),        // 7: engine.StatusResponse
-	(*ServiceStatus)(nil),         // 8: engine.ServiceStatus
-	(*StreamResponse)(nil),        // 9: engine.StreamResponse
-	(*SnapshotSaveRequest)(nil),   // 10: engine.SnapshotSaveRequest
-	(*SnapshotLoadRequest)(nil),   // 11: engine.SnapshotLoadRequest
-	(*SnapshotListRequest)(nil),   // 12: engine.SnapshotListRequest
-	(*SnapshotListResponse)(nil),  // 13: engine.SnapshotListResponse
-	(*Snapshot)(nil),              // 14: engine.Snapshot
-	(*SnapshotDeleteRequest)(nil), // 15: engine.SnapshotDeleteRequest
-	(*DoctorRequest)(nil),         // 16: engine.DoctorRequest
-	(*DoctorResponse)(nil),        // 17: engine.DoctorResponse
-	(*DiagnosticIssue)(nil),       // 18: engine.DiagnosticIssue
-	(*ResetRequest)(nil),          // 19: engine.ResetRequest
-	(*SecretSetRequest)(nil),      // 20: engine.SecretSetRequest
-	(*SecretGetRequest)(nil),      // 21: engine.SecretGetRequest
-	(*SecretGetResponse)(nil),     // 22: engine.SecretGetResponse
-	(*SecretListRequest)(nil),     // 23: engine.SecretListRequest
-	(*SecretListResponse)(nil),    // 24: engine.SecretListResponse
-	(*SecretEntry)(nil),           // 25: engine.SecretEntry
-	(*SecretDeleteRequest)(nil),   // 26: engine.SecretDeleteRequest
-	(*SecretRotateRequest)(nil),   // 27: engine.SecretRotateRequest
-	(*SnapshotExportRequest)(nil), // 28: engine.SnapshotExportRequest
-	(*SnapshotImportRequest)(nil), // 29: engine.SnapshotImportRequest
-	(*BuildRequest)(nil),          // 30: engine.BuildRequest
-	(*ExecRequest)(nil),           // 31: engine.ExecRequest
-	(*ExecResponse)(nil),          // 32: engine.ExecResponse
+	(*ShutdownRequest)(nil),       // 0: engine.ShutdownRequest
+	(*ShutdownResponse)(nil),      // 1: engine.ShutdownResponse
+	(*PingRequest)(nil),           // 2: engine.PingRequest
+	(*PingResponse)(nil),          // 3: engine.PingResponse
+	(*StartRequest)(nil),          // 4: engine.StartRequest
+	(*StopRequest)(nil),           // 5: engine.StopRequest
+	(*StatusRequest)(nil),         // 6: engine.StatusRequest
+	(*LogsRequest)(nil),           // 7: engine.LogsRequest
+	(*LogEntry)(nil),              // 8: engine.LogEntry
+	(*StatusResponse)(nil),        // 9: engine.StatusResponse
+	(*ServiceStatus)(nil),         // 10: engine.ServiceStatus
+	(*StreamResponse)(nil),        // 11: engine.StreamResponse
+	(*SnapshotSaveRequest)(nil),   // 12: engine.SnapshotSaveRequest
+	(*SnapshotLoadRequest)(nil),   // 13: engine.SnapshotLoadRequest
+	(*SnapshotListRequest)(nil),   // 14: engine.SnapshotListRequest
+	(*SnapshotListResponse)(nil),  // 15: engine.SnapshotListResponse
+	(*Snapshot)(nil),              // 16: engine.Snapshot
+	(*SnapshotDeleteRequest)(nil), // 17: engine.SnapshotDeleteRequest
+	(*DoctorRequest)(nil),         // 18: engine.DoctorRequest
+	(*DoctorResponse)(nil),        // 19: engine.DoctorResponse
+	(*DiagnosticIssue)(nil),       // 20: engine.DiagnosticIssue
+	(*ResetRequest)(nil),          // 21: engine.ResetRequest
+	(*SecretSetRequest)(nil),      // 22: engine.SecretSetRequest
+	(*SecretGetRequest)(nil),      // 23: engine.SecretGetRequest
+	(*SecretGetResponse)(nil),     // 24: engine.SecretGetResponse
+	(*SecretListRequest)(nil),     // 25: engine.SecretListRequest
+	(*SecretListResponse)(nil),    // 26: engine.SecretListResponse
+	(*SecretEntry)(nil),           // 27: engine.SecretEntry
+	(*SecretDeleteRequest)(nil),   // 28: engine.SecretDeleteRequest
+	(*SecretRotateRequest)(nil),   // 29: engine.SecretRotateRequest
+	(*SnapshotExportRequest)(nil), // 30: engine.SnapshotExportRequest
+	(*SnapshotImportRequest)(nil), // 31: engine.SnapshotImportRequest
+	(*BuildRequest)(nil),          // 32: engine.BuildRequest
+	(*ExecRequest)(nil),           // 33: engine.ExecRequest
+	(*ExecResponse)(nil),          // 34: engine.ExecResponse
 }
 var file_engine_proto_depIdxs = []int32{
-	8,  // 0: engine.StatusResponse.services:type_name -> engine.ServiceStatus
-	14, // 1: engine.SnapshotListResponse.snapshots:type_name -> engine.Snapshot
-	18, // 2: engine.DoctorResponse.issues:type_name -> engine.DiagnosticIssue
-	25, // 3: engine.SecretListResponse.secrets:type_name -> engine.SecretEntry
-	2,  // 4: engine.EngineService.Start:input_type -> engine.StartRequest
-	3,  // 5: engine.EngineService.Stop:input_type -> engine.StopRequest
-	4,  // 6: engine.EngineService.Status:input_type -> engine.StatusRequest
-	5,  // 7: engine.EngineService.Logs:input_type -> engine.LogsRequest
-	10, // 8: engine.EngineService.SnapshotSave:input_type -> engine.SnapshotSaveRequest
-	11, // 9: engine.EngineService.SnapshotLoad:input_type -> engine.SnapshotLoadRequest
-	12, // 10: engine.EngineService.SnapshotList:input_type -> engine.SnapshotListRequest
-	15, // 11: engine.EngineService.SnapshotDelete:input_type -> engine.SnapshotDeleteRequest
-	16, // 12: engine.EngineService.Doctor:input_type -> engine.DoctorRequest
-	19, // 13: engine.EngineService.Reset:input_type -> engine.ResetRequest
-	0,  // 14: engine.EngineService.Ping:input_type -> engine.PingRequest
-	20, // 15: engine.EngineService.SecretSet:input_type -> engine.SecretSetRequest
-	21, // 16: engine.EngineService.SecretGet:input_type -> engine.SecretGetRequest
-	23, // 17: engine.EngineService.SecretList:input_type -> engine.SecretListRequest
-	26, // 18: engine.EngineService.SecretDelete:input_type -> engine.SecretDeleteRequest
-	27, // 19: engine.EngineService.SecretRotate:input_type -> engine.SecretRotateRequest
-	28, // 20: engine.EngineService.SnapshotExport:input_type -> engine.SnapshotExportRequest
-	29, // 21: engine.EngineService.SnapshotImport:input_type -> engine.SnapshotImportRequest
-	30, // 22: engine.EngineService.Build:input_type -> engine.BuildRequest
-	31, // 23: engine.EngineService.Exec:input_type -> engine.ExecRequest
-	9,  // 24: engine.EngineService.Start:output_type -> engine.StreamResponse
-	7,  // 25: engine.EngineService.Stop:output_type -> engine.StatusResponse
-	7,  // 26: engine.EngineService.Status:output_type -> engine.StatusResponse
-	6,  // 27: engine.EngineService.Logs:output_type -> engine.LogEntry
-	9,  // 28: engine.EngineService.SnapshotSave:output_type -> engine.StreamResponse
-	9,  // 29: engine.EngineService.SnapshotLoad:output_type -> engine.StreamResponse
-	13, // 30: engine.EngineService.SnapshotList:output_type -> engine.SnapshotListResponse
-	7,  // 31: engine.EngineService.SnapshotDelete:output_type -> engine.StatusResponse
-	17, // 32: engine.EngineService.Doctor:output_type -> engine.DoctorResponse
-	9,  // 33: engine.EngineService.Reset:output_type -> engine.StreamResponse
-	1,  // 34: engine.EngineService.Ping:output_type -> engine.PingResponse
-	7,  // 35: engine.EngineService.SecretSet:output_type -> engine.StatusResponse
-	22, // 36: engine.EngineService.SecretGet:output_type -> engine.SecretGetResponse
-	24, // 37: engine.EngineService.SecretList:output_type -> engine.SecretListResponse
-	7,  // 38: engine.EngineService.SecretDelete:output_type -> engine.StatusResponse
-	7,  // 39: engine.EngineService.SecretRotate:output_type -> engine.StatusResponse
-	9,  // 40: engine.EngineService.SnapshotExport:output_type -> engine.StreamResponse
-	9,  // 41: engine.EngineService.SnapshotImport:output_type -> engine.StreamResponse
-	9,  // 42: engine.EngineService.Build:output_type -> engine.StreamResponse
-	32, // 43: engine.EngineService.Exec:output_type -> engine.ExecResponse
-	24, // [24:44] is the sub-list for method output_type
-	4,  // [4:24] is the sub-list for method input_type
+	10, // 0: engine.StatusResponse.services:type_name -> engine.ServiceStatus
+	16, // 1: engine.SnapshotListResponse.snapshots:type_name -> engine.Snapshot
+	20, // 2: engine.DoctorResponse.issues:type_name -> engine.DiagnosticIssue
+	27, // 3: engine.SecretListResponse.secrets:type_name -> engine.SecretEntry
+	4,  // 4: engine.EngineService.Start:input_type -> engine.StartRequest
+	5,  // 5: engine.EngineService.Stop:input_type -> engine.StopRequest
+	6,  // 6: engine.EngineService.Status:input_type -> engine.StatusRequest
+	7,  // 7: engine.EngineService.Logs:input_type -> engine.LogsRequest
+	12, // 8: engine.EngineService.SnapshotSave:input_type -> engine.SnapshotSaveRequest
+	13, // 9: engine.EngineService.SnapshotLoad:input_type -> engine.SnapshotLoadRequest
+	14, // 10: engine.EngineService.SnapshotList:input_type -> engine.SnapshotListRequest
+	17, // 11: engine.EngineService.SnapshotDelete:input_type -> engine.SnapshotDeleteRequest
+	18, // 12: engine.EngineService.Doctor:input_type -> engine.DoctorRequest
+	21, // 13: engine.EngineService.Reset:input_type -> engine.ResetRequest
+	2,  // 14: engine.EngineService.Ping:input_type -> engine.PingRequest
+	22, // 15: engine.EngineService.SecretSet:input_type -> engine.SecretSetRequest
+	23, // 16: engine.EngineService.SecretGet:input_type -> engine.SecretGetRequest
+	25, // 17: engine.EngineService.SecretList:input_type -> engine.SecretListRequest
+	28, // 18: engine.EngineService.SecretDelete:input_type -> engine.SecretDeleteRequest
+	29, // 19: engine.EngineService.SecretRotate:input_type -> engine.SecretRotateRequest
+	30, // 20: engine.EngineService.SnapshotExport:input_type -> engine.SnapshotExportRequest
+	31, // 21: engine.EngineService.SnapshotImport:input_type -> engine.SnapshotImportRequest
+	32, // 22: engine.EngineService.Build:input_type -> engine.BuildRequest
+	33, // 23: engine.EngineService.Exec:input_type -> engine.ExecRequest
+	0,  // 24: engine.EngineService.Shutdown:input_type -> engine.ShutdownRequest
+	11, // 25: engine.EngineService.Start:output_type -> engine.StreamResponse
+	9,  // 26: engine.EngineService.Stop:output_type -> engine.StatusResponse
+	9,  // 27: engine.EngineService.Status:output_type -> engine.StatusResponse
+	8,  // 28: engine.EngineService.Logs:output_type -> engine.LogEntry
+	11, // 29: engine.EngineService.SnapshotSave:output_type -> engine.StreamResponse
+	11, // 30: engine.EngineService.SnapshotLoad:output_type -> engine.StreamResponse
+	15, // 31: engine.EngineService.SnapshotList:output_type -> engine.SnapshotListResponse
+	9,  // 32: engine.EngineService.SnapshotDelete:output_type -> engine.StatusResponse
+	19, // 33: engine.EngineService.Doctor:output_type -> engine.DoctorResponse
+	11, // 34: engine.EngineService.Reset:output_type -> engine.StreamResponse
+	3,  // 35: engine.EngineService.Ping:output_type -> engine.PingResponse
+	9,  // 36: engine.EngineService.SecretSet:output_type -> engine.StatusResponse
+	24, // 37: engine.EngineService.SecretGet:output_type -> engine.SecretGetResponse
+	26, // 38: engine.EngineService.SecretList:output_type -> engine.SecretListResponse
+	9,  // 39: engine.EngineService.SecretDelete:output_type -> engine.StatusResponse
+	9,  // 40: engine.EngineService.SecretRotate:output_type -> engine.StatusResponse
+	11, // 41: engine.EngineService.SnapshotExport:output_type -> engine.StreamResponse
+	11, // 42: engine.EngineService.SnapshotImport:output_type -> engine.StreamResponse
+	11, // 43: engine.EngineService.Build:output_type -> engine.StreamResponse
+	34, // 44: engine.EngineService.Exec:output_type -> engine.ExecResponse
+	1,  // 45: engine.EngineService.Shutdown:output_type -> engine.ShutdownResponse
+	25, // [25:46] is the sub-list for method output_type
+	4,  // [4:25] is the sub-list for method input_type
 	4,  // [4:4] is the sub-list for extension type_name
 	4,  // [4:4] is the sub-list for extension extendee
 	0,  // [0:4] is the sub-list for field type_name
@@ -2238,7 +2317,7 @@ func file_engine_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_engine_proto_rawDesc), len(file_engine_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   33,
+			NumMessages:   35,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

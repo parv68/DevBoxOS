@@ -44,6 +44,7 @@ type server struct {
 	rt           runtime.Runtime // backward compat, points to hostRt
 	hostRt       runtime.Runtime
 	dockerRt     runtime.Runtime
+	grpcServer   *grpc.Server
 	mu           sync.Mutex
 }
 
@@ -936,6 +937,12 @@ func (s *server) SecretRotate(ctx context.Context, req *pb.SecretRotateRequest) 
 	return &pb.StatusResponse{Status: "ok"}, nil
 }
 
+// Shutdown gracefully stops the engine daemon.
+func (s *server) Shutdown(ctx context.Context, req *pb.ShutdownRequest) (*pb.ShutdownResponse, error) {
+	go s.grpcServer.GracefulStop()
+	return &pb.ShutdownResponse{}, nil
+}
+
 func main() {
 	// Initialize platform-specific directories
 	configDir := platform.ConfigDir()
@@ -977,8 +984,9 @@ func main() {
 
 	s := grpc.NewServer()
 	svc := &server{
-		startedAt: time.Now(),
-		stateMgr:  stateMgr,
+		startedAt:  time.Now(),
+		stateMgr:   stateMgr,
+		grpcServer: s,
 	}
 	pb.RegisterEngineServiceServer(s, svc)
 

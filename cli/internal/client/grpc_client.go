@@ -17,9 +17,9 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-// engineBinPath returns the path to the devbox-engine binary,
+// EngineBinPath returns the path to the devbox-engine binary,
 // assumed to be in the same directory as the running CLI binary.
-func engineBinPath() (string, error) {
+func EngineBinPath() (string, error) {
 	cliExe, err := os.Executable()
 	if err != nil {
 		return "", err
@@ -34,7 +34,7 @@ func engineBinPath() (string, error) {
 
 // startEngineDaemon launches the engine daemon as a background process.
 func startEngineDaemon() error {
-	binPath, err := engineBinPath()
+	binPath, err := EngineBinPath()
 	if err != nil {
 		return fmt.Errorf("locate engine binary: %w", err)
 	}
@@ -603,6 +603,15 @@ func (c *Client) Build(projectPath, service string, noCache, pull bool, statusCa
 			return nil
 		}
 	}
+}
+
+// Shutdown gracefully stops the engine daemon.
+func (c *Client) Shutdown() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	_, err := c.client.Shutdown(ctx, &pb.ShutdownRequest{})
+	return err
 }
 
 // Exec runs a command inside a service container via the engine.

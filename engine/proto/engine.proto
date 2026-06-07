@@ -24,7 +24,12 @@ service EngineService {
   rpc SnapshotImport(SnapshotImportRequest) returns (stream StreamResponse);
   rpc Build(BuildRequest) returns (stream StreamResponse);
   rpc Exec(ExecRequest) returns (ExecResponse);
+  rpc Shutdown(ShutdownRequest) returns (ShutdownResponse);
 }
+
+message ShutdownRequest {}
+
+message ShutdownResponse {}
 
 message PingRequest {}
 
