@@ -193,6 +193,8 @@ func (h *HostRuntime) CreateContainer(ctx context.Context, cfg runtime.Container
 		cmd = exec.CommandContext(ctx, cfg.Command[0], cfg.Command[1:]...)
 	}
 
+	proc.Cmd = cmd
+
 	// Working directory
 	if cfg.WorkingDir != "" {
 		cmd.Dir = cfg.WorkingDir
