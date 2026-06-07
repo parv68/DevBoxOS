@@ -36,8 +36,11 @@ Write-Info "Detected: windows/$arch"
 if (-not $Version) {
     Write-Info "Fetching latest version..."
     try {
-        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest" -ErrorAction Stop
-        $Version = $release.tag_name
+        $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases?per_page=30" -ErrorAction Stop
+        $releases = $releases | Where-Object { -not $_.draft -and -not $_.prerelease }
+        $latest = $releases | Sort-Object { [System.Version]($_.tag_name -replace '^v', '') } -Descending | Select-Object -First 1
+        if (-not $latest) { throw "No stable releases found" }
+        $Version = $latest.tag_name
     } catch {
         Write-Error "Failed to fetch latest version. Check your internet connection."
         Write-Error "You can set a specific version: `$env:DEVBOX_VERSION = 'v1.0.0'"
