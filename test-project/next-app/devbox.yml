@@ -5,6 +5,7 @@ runtimes:
 services:
     api:
         command: npm run dev
+        working_dir: E:\devboxos\test-project\next-app
         port: "3000"
 networking:
     discovery: true

@@ -70,6 +70,13 @@ func runTop(cmd *cobra.Command, args []string) error {
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err == nil {
 		ctx := context.Background()
+		containers, err := dockerClient.ContainerList(ctx, container.ListOptions{
+			Filters: filters.NewArgs(filters.Arg("label", "devboxos.managed")),
+		})
+		if err == nil && len(containers) == 0 {
+			fmt.Println("  No running services found")
+			return nil
+		}
 		for {
 			displayStats(ctx, dockerClient)
 			time.Sleep(time.Duration(topInterval) * time.Second)
@@ -83,6 +90,12 @@ func runTop(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("Docker not available and engine not running: %w", err)
 	}
 	defer cl.Close()
+
+	initial, err := cl.Status(".")
+	if err == nil && (initial.Status != "running" || len(initial.Services) == 0) {
+		fmt.Println("  No running services found")
+		return nil
+	}
 
 	for {
 		displayHostStats(cl)

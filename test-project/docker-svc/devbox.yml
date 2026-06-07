@@ -1,0 +1,18 @@
+name: docker-svc
+version: "1.0"
+services:
+    web:
+        image: nginx:alpine
+        port: "8080"
+    api:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        command: node server.js
+        port: "3000"
+networking:
+    discovery: true
+    expose:
+        - 8080
+        - 3000
+    egress: default-deny

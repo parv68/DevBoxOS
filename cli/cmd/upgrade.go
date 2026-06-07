@@ -79,12 +79,11 @@ func runUpgrade(cmd *cobra.Command, args []string) error {
 }
 
 func getVersion() string {
-	// This would normally come from build-time ldflags
-	return "0.1.0-dev"
+	return version
 }
 
 func getLatestRelease() (*GitHubRelease, error) {
-	url := "https://api.github.com/repos/devboxos/devboxos/releases/latest"
+	url := "https://api.github.com/repos/parv68/DevBoxOS/releases/latest"
 	if upgradeVersion != "latest" {
 		url = fmt.Sprintf("https://api.github.com/repos/devboxos/devboxos/releases/tags/%s", upgradeVersion)
 	}

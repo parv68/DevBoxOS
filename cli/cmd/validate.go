@@ -55,8 +55,8 @@ func runValidate(cmd *cobra.Command, args []string) error {
 	}
 
 	for name, svc := range cfg.Services {
-		if svc.Image == "" && (svc.Build == nil || svc.Build.Context == "") {
-			issues = append(issues, fmt.Sprintf("Service %q: must specify 'image' or 'build'", name))
+		if svc.Image == "" && (svc.Build == nil || svc.Build.Context == "") && svc.Command == "" && svc.Runtime == "" {
+			issues = append(issues, fmt.Sprintf("Service %q: must specify 'image', 'build', 'command', or 'runtime'", name))
 		}
 
 		if svc.Port != "" && svc.Ports != nil && len(svc.Ports) > 0 {
