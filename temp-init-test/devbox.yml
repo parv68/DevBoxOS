@@ -1,6 +1,0 @@
-name: temp-init-test
-version: "1.0"
-services: {}
-networking:
-    discovery: true
-    egress: default-deny
