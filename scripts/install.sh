@@ -49,10 +49,17 @@ check_prereqs() {
     fi
 }
 
-# Get latest version from GitHub
+# Get latest stable version from GitHub (by semver, not by publish date)
 get_latest_version() {
     if [ "$VERSION" = "latest" ]; then
-        VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
+        VERSION=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases?per_page=30" | \
+            grep '"tag_name"' | \
+            sed -E 's/.*"([^"]+)".*/\1/' | \
+            grep -v -- '-rc\|-alpha\|-beta' | \
+            sed 's/^v//' | \
+            sort -t. -k1,1n -k2,2n -k3,3n | \
+            tail -1 | \
+            sed 's/^/v/')
     fi
     info "Installing DevBoxOS ${VERSION}"
 }
