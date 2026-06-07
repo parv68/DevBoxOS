@@ -244,12 +244,14 @@ devbox version
 ### 1. Start the engine daemon
 
 ```bash
-# Start the engine in the background
-devbox-engine &
+# Start the engine daemon (auto-launched on first `devbox start`)
+devbox engine start
 
-# Or run it as a foreground daemon
-devbox-engine
+# Check status
+devbox engine status   # (coming soon)
 ```
+
+The engine runs as a background process and is automatically started when you run `devbox start` if it's not already running. You can manage it explicitly with `devbox engine {start|stop|restart}`.
 
 ### 2. Initialize a project
 
@@ -344,6 +346,9 @@ devbox stop
 | `devbox top --interval <sec>` | Custom refresh interval | Yes |
 | `devbox wait <service>` | Wait for a service to become healthy | Yes |
 | `devbox wait --timeout <sec>` | Custom health-check timeout | Yes |
+| `devbox engine start` | Start the engine daemon (if not running) | No |
+| `devbox engine stop` | Gracefully stop the engine daemon | Yes |
+| `devbox engine restart` | Restart the engine daemon | Yes |
 
 ### Snapshot Commands
 
@@ -840,7 +845,7 @@ make lint
 
 **Q: Do I need the engine daemon running all the time?**
 
-A: No. Commands like `init`, `validate`, `build`, `exec`, `shell`, `cp`, `logs`, `graph`, `ps`, `prune`, `destroy`, `snapshot`, `secrets`, and `config` work without the engine by falling back to the Docker SDK directly. Only `start`, `stop`, `status`, `reset`, `wait`, and `top` require the engine.
+A: No. Commands like `init`, `validate`, `build`, `exec`, `shell`, `cp`, `logs`, `graph`, `ps`, `prune`, `destroy`, `snapshot`, `secrets`, and `config` work without the engine by falling back to the Docker SDK directly. Only `start`, `stop`, `status`, `reset`, `wait`, `top`, and `engine stop`/`engine restart` require the engine. Use `devbox engine start` to launch it when needed.
 
 **Q: Where is data stored?**
 
@@ -869,6 +874,17 @@ A: Commit your `devbox.yml` and `.devbox/secrets.enc` (the encrypted secrets sto
 **Engine won't start**
 
 ```bash
+# Start the engine
+devbox engine start
+
+# If it's already running but unresponsive, restart it
+devbox engine restart
+
+# If gRPC is unresponsive, force-kill and restart
+killall devbox-engine   # macOS/Linux
+taskkill /f /im devbox-engine.exe   # Windows
+devbox engine start
+
 # Check if port 51000 is in use
 netstat -an | findstr 51000   # Windows
 lsof -i :51000                # macOS/Linux

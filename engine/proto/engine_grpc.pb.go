@@ -39,6 +39,7 @@ const (
 	EngineService_SnapshotImport_FullMethodName = "/engine.EngineService/SnapshotImport"
 	EngineService_Build_FullMethodName          = "/engine.EngineService/Build"
 	EngineService_Exec_FullMethodName           = "/engine.EngineService/Exec"
+	EngineService_Shutdown_FullMethodName       = "/engine.EngineService/Shutdown"
 )
 
 // EngineServiceClient is the client API for EngineService service.
@@ -65,6 +66,7 @@ type EngineServiceClient interface {
 	SnapshotImport(ctx context.Context, in *SnapshotImportRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamResponse], error)
 	Build(ctx context.Context, in *BuildRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[StreamResponse], error)
 	Exec(ctx context.Context, in *ExecRequest, opts ...grpc.CallOption) (*ExecResponse, error)
+	Shutdown(ctx context.Context, in *ShutdownRequest, opts ...grpc.CallOption) (*ShutdownResponse, error)
 }
 
 type engineServiceClient struct {
@@ -347,6 +349,16 @@ func (c *engineServiceClient) Exec(ctx context.Context, in *ExecRequest, opts ..
 	return out, nil
 }
 
+func (c *engineServiceClient) Shutdown(ctx context.Context, in *ShutdownRequest, opts ...grpc.CallOption) (*ShutdownResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ShutdownResponse)
+	err := c.cc.Invoke(ctx, EngineService_Shutdown_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // EngineServiceServer is the server API for EngineService service.
 // All implementations must embed UnimplementedEngineServiceServer
 // for forward compatibility.
@@ -371,6 +383,7 @@ type EngineServiceServer interface {
 	SnapshotImport(*SnapshotImportRequest, grpc.ServerStreamingServer[StreamResponse]) error
 	Build(*BuildRequest, grpc.ServerStreamingServer[StreamResponse]) error
 	Exec(context.Context, *ExecRequest) (*ExecResponse, error)
+	Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error)
 	mustEmbedUnimplementedEngineServiceServer()
 }
 
@@ -440,6 +453,9 @@ func (UnimplementedEngineServiceServer) Build(*BuildRequest, grpc.ServerStreamin
 }
 func (UnimplementedEngineServiceServer) Exec(context.Context, *ExecRequest) (*ExecResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method Exec not implemented")
+}
+func (UnimplementedEngineServiceServer) Shutdown(context.Context, *ShutdownRequest) (*ShutdownResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method Shutdown not implemented")
 }
 func (UnimplementedEngineServiceServer) mustEmbedUnimplementedEngineServiceServer() {}
 func (UnimplementedEngineServiceServer) testEmbeddedByValue()                       {}
@@ -766,6 +782,24 @@ func _EngineService_Exec_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EngineService_Shutdown_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ShutdownRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EngineServiceServer).Shutdown(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: EngineService_Shutdown_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EngineServiceServer).Shutdown(ctx, req.(*ShutdownRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // EngineService_ServiceDesc is the grpc.ServiceDesc for EngineService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -820,6 +854,10 @@ var EngineService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Exec",
 			Handler:    _EngineService_Exec_Handler,
+		},
+		{
+			MethodName: "Shutdown",
+			Handler:    _EngineService_Shutdown_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

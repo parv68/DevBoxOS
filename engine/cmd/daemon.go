@@ -44,6 +44,7 @@ type server struct {
 	rt           runtime.Runtime // backward compat, points to hostRt
 	hostRt       runtime.Runtime
 	dockerRt     runtime.Runtime
+	grpcServer   *grpc.Server
 	mu           sync.Mutex
 }
 
@@ -56,11 +57,15 @@ func (s *server) Ping(ctx context.Context, req *pb.PingRequest) (*pb.PingRespons
 
 func (s *server) Start(req *pb.StartRequest, stream pb.EngineService_StartServer) error {
 	send := func(status, msg string, done bool) {
-		stream.Send(&pb.StreamResponse{
+		resp := &pb.StreamResponse{
 			Status:  status,
 			Message: msg,
 			Done:    done,
-		})
+		}
+		if done && status == "error" {
+			resp.Error = msg
+		}
+		stream.Send(resp)
 	}
 
 	// Parse config
@@ -511,11 +516,15 @@ func (s *server) SnapshotImport(req *pb.SnapshotImportRequest, stream pb.EngineS
 
 func (s *server) Build(req *pb.BuildRequest, stream pb.EngineService_BuildServer) error {
 	send := func(status, msg string, done bool) {
-		stream.Send(&pb.StreamResponse{
+		resp := &pb.StreamResponse{
 			Status:  status,
 			Message: msg,
 			Done:    done,
-		})
+		}
+		if done && status == "error" {
+			resp.Error = msg
+		}
+		stream.Send(resp)
 	}
 
 	parser := config.NewParser()
@@ -928,6 +937,12 @@ func (s *server) SecretRotate(ctx context.Context, req *pb.SecretRotateRequest) 
 	return &pb.StatusResponse{Status: "ok"}, nil
 }
 
+// Shutdown gracefully stops the engine daemon.
+func (s *server) Shutdown(ctx context.Context, req *pb.ShutdownRequest) (*pb.ShutdownResponse, error) {
+	go s.grpcServer.GracefulStop()
+	return &pb.ShutdownResponse{}, nil
+}
+
 func main() {
 	// Initialize platform-specific directories
 	configDir := platform.ConfigDir()
@@ -969,8 +984,9 @@ func main() {
 
 	s := grpc.NewServer()
 	svc := &server{
-		startedAt: time.Now(),
-		stateMgr:  stateMgr,
+		startedAt:  time.Now(),
+		stateMgr:   stateMgr,
+		grpcServer: s,
 	}
 	pb.RegisterEngineServiceServer(s, svc)
 
