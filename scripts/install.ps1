@@ -38,7 +38,7 @@ if (-not $Version) {
     try {
         $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases?per_page=30" -ErrorAction Stop
         $releases = $releases | Where-Object { -not $_.draft -and -not $_.prerelease }
-        $latest = $releases | Sort-Object { [System.Version]($_.tag_name -replace '^v', '') } -Descending | Select-Object -First 1
+        $latest = $releases | Sort-Object { [System.Version](($_.tag_name -replace '^v', '') -replace '-.*', '') } -Descending | Select-Object -First 1
         if (-not $latest) { throw "No stable releases found" }
         $Version = $latest.tag_name
     } catch {
