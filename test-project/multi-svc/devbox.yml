@@ -1,0 +1,23 @@
+name: multi-svc
+version: "1.0"
+services:
+    db:
+        command: cmd /c "echo Database started & timeout /t 3600"
+        port: "5432"
+    api:
+        command: cmd /c "echo API starting... & timeout /t 5 & echo API started & timeout /t 3600"
+        port: "8080"
+        depends_on:
+            - db
+    web:
+        command: cmd /c "echo Web starting... & timeout /t 5 & echo Web started & timeout /t 3600"
+        port: "3000"
+        depends_on:
+            - api
+networking:
+    discovery: true
+    expose:
+        - 5432
+        - 8080
+        - 3000
+    egress: default-deny

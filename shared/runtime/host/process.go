@@ -177,20 +177,12 @@ func (h *HostRuntime) CreateContainer(ctx context.Context, cfg runtime.Container
 
 	// Build exec command
 	var cmd *exec.Cmd
-	shell := os.Getenv("SHELL")
-	if shell == "" {
-		shell = "cmd"
-		if _, err := os.Stat("/bin/sh"); err == nil {
-			shell = "/bin/sh"
-		}
-	}
-	switch filepath.Base(shell) {
-	case "cmd", "cmd.exe":
-		cmd = exec.CommandContext(ctx, shell, "/C", cfg.Command[0])
-	case "sh", "bash", "zsh":
-		cmd = exec.CommandContext(ctx, shell, "-c", cfg.Command[0])
-	default:
+	if len(cfg.Command) >= 2 && (cfg.Command[0] == "cmd" || cfg.Command[0] == "cmd.exe" || cfg.Command[0] == "sh" || cfg.Command[0] == "bash") {
 		cmd = exec.CommandContext(ctx, cfg.Command[0], cfg.Command[1:]...)
+	} else if len(cfg.Command) > 0 {
+		cmd = exec.CommandContext(ctx, cfg.Command[0], cfg.Command[1:]...)
+	} else {
+		return "", fmt.Errorf("no command specified for service %s", cfg.Name)
 	}
 
 	proc.Cmd = cmd
