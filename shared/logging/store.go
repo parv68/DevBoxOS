@@ -322,38 +322,76 @@ func (c *Collector) collectOnce(rt runtime.Runtime, containerID string, lastTime
 	}
 	defer reader.Close()
 
+	// Peek at the first 8 bytes to determine format
+	peekBuf := make([]byte, 8)
+	n, _ := io.ReadFull(reader, peekBuf)
+
 	var batch []string
-	header := make([]byte, 8)
 
-	for {
-		_, err := io.ReadFull(reader, header)
-		if err != nil {
-			if err == io.EOF || err == io.ErrUnexpectedEOF {
-				break
-			}
-			break
-		}
+	if n < 8 {
+		// Stream is empty or very short — nothing to process
+		return
+	}
 
-		payloadLen := binary.BigEndian.Uint32(header[4:8])
-		if payloadLen == 0 || payloadLen > 1024*1024 {
-			continue
-		}
-
+	payloadLen := binary.BigEndian.Uint32(peekBuf[4:8])
+	if payloadLen > 0 && payloadLen <= 1024*1024 {
+		// Docker-framed format: try to parse the first frame
 		payload := make([]byte, payloadLen)
-		_, err = io.ReadFull(reader, payload)
-		if err != nil {
-			break
-		}
+		_, err := io.ReadFull(reader, payload)
+		if err == nil {
+			line := strings.TrimSpace(string(payload))
+			if line != "" {
+				if len(line) > 30 && line[0] >= '0' && line[0] <= '9' {
+					parts := strings.SplitN(line, " ", 2)
+					if len(parts) == 2 {
+						*lastTimestamp = parts[0]
+					}
+				}
+				batch = append(batch, line)
+			}
 
-		line := strings.TrimSpace(string(payload))
-		if line != "" {
-			if len(line) > 30 && line[0] >= '0' && line[0] <= '9' {
-				parts := strings.SplitN(line, " ", 2)
-				if len(parts) == 2 {
-					*lastTimestamp = parts[0]
+			// Read remaining Docker frames
+			for {
+				_, err := io.ReadFull(reader, peekBuf)
+				if err != nil {
+					break
+				}
+				plen := binary.BigEndian.Uint32(peekBuf[4:8])
+				if plen == 0 || plen > 1024*1024 {
+					break
+				}
+				payload := make([]byte, plen)
+				_, err = io.ReadFull(reader, payload)
+				if err != nil {
+					break
+				}
+				line := strings.TrimSpace(string(payload))
+				if line != "" {
+					if len(line) > 30 && line[0] >= '0' && line[0] <= '9' {
+						parts := strings.SplitN(line, " ", 2)
+						if len(parts) == 2 {
+							*lastTimestamp = parts[0]
+						}
+					}
 					batch = append(batch, line)
 				}
-			} else {
+			}
+		} else {
+			// Partial Docker frame — treat as raw text
+			allData := append(peekBuf[:n], payload...)
+			for _, line := range strings.Split(strings.TrimSpace(string(allData)), "\n") {
+				if line != "" {
+					batch = append(batch, line)
+				}
+			}
+		}
+	} else {
+		// Not Docker-framed (raw text from host runtime)
+		// Read remaining data
+		rest, _ := io.ReadAll(reader)
+		allData := append(peekBuf[:n], rest...)
+		for _, line := range strings.Split(strings.TrimSpace(string(allData)), "\n") {
+			if line != "" {
 				batch = append(batch, line)
 			}
 		}
