@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	goruntime "runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -289,19 +290,30 @@ func (h *HostRuntime) StopContainer(ctx context.Context, id string, timeoutSecon
 		return nil
 	}
 
+	pid := proc.Cmd.Process.Pid
+
 	// SIGTERM first, then SIGKILL after timeout
 	if timeoutSeconds > 0 {
 		proc.Cmd.Process.Signal(os.Interrupt)
 		select {
 		case <-proc.done:
+			killProcessTree(pid)
 			return nil
 		case <-time.After(time.Duration(timeoutSeconds) * time.Second):
-			proc.Cmd.Process.Kill()
 		}
-	} else {
-		proc.Cmd.Process.Kill()
 	}
+
+	// Kill the main process
+	proc.Cmd.Process.Kill()
+	// Kill child processes (cmd /C forks children on Windows)
+	killProcessTree(pid)
 	return nil
+}
+
+func killProcessTree(pid int) {
+	if goruntime.GOOS == "windows" {
+		exec.Command("taskkill", "/F", "/T", "/PID", strconv.Itoa(pid)).Run()
+	}
 }
 
 func (h *HostRuntime) RemoveContainer(ctx context.Context, id string, force bool) error {

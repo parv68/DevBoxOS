@@ -18,7 +18,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var topInterval int
+var (
+	topInterval int
+	topOnce     bool
+)
 
 type dockerStats struct {
 	CPUStats struct {
@@ -63,17 +66,33 @@ Example:
 
 func init() {
 	topCmd.Flags().IntVarP(&topInterval, "interval", "i", 2, "Refresh interval in seconds")
+	topCmd.Flags().BoolVarP(&topOnce, "once", "o", false, "Show stats once and exit")
 	rootCmd.AddCommand(topCmd)
 }
 
 func runTop(cmd *cobra.Command, args []string) error {
+	ctx := cmd.Context()
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err == nil {
-		ctx := context.Background()
+		containers, err := dockerClient.ContainerList(ctx, container.ListOptions{
+			Filters: filters.NewArgs(filters.Arg("label", "devboxos.managed")),
+		})
+		if err == nil && len(containers) == 0 {
+			fmt.Println("  No running services found")
+			return nil
+		}
+		displayStats(ctx, dockerClient)
+		if topOnce {
+			return nil
+		}
 		for {
-			displayStats(ctx, dockerClient)
-			time.Sleep(time.Duration(topInterval) * time.Second)
-			clearLines(20)
+			select {
+			case <-ctx.Done():
+				return nil
+			case <-time.After(time.Duration(topInterval) * time.Second):
+				displayStats(ctx, dockerClient)
+				clearLines(20)
+			}
 		}
 	}
 
@@ -84,10 +103,25 @@ func runTop(cmd *cobra.Command, args []string) error {
 	}
 	defer cl.Close()
 
+	initial, err := cl.Status(".")
+	if err == nil && (initial.Status != "running" || len(initial.Services) == 0) {
+		fmt.Println("  No running services found")
+		return nil
+	}
+
+	displayHostStats(cl)
+	if topOnce {
+		return nil
+	}
+
 	for {
-		displayHostStats(cl)
-		time.Sleep(time.Duration(topInterval) * time.Second)
-		clearLines(20)
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-time.After(time.Duration(topInterval) * time.Second):
+			displayHostStats(cl)
+			clearLines(20)
+		}
 	}
 }
 
