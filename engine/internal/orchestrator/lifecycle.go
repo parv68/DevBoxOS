@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	goruntime "runtime"
 	"time"
 
-	"github.com/devboxos/devboxos/shared/runtime"
+	sharedRuntime "github.com/devboxos/devboxos/shared/runtime"
 	"github.com/devboxos/devboxos/shared/secrets"
 	"github.com/devboxos/devboxos/shared/types"
 )
@@ -22,9 +23,9 @@ func NewLifecycle(resolver *secrets.Resolver) *Lifecycle {
 }
 
 // StartService starts a single service using the given runtime.
-func (l *Lifecycle) StartService(ctx context.Context, rt runtime.Runtime, name string, svc types.Service, networkName string, projectPath string, statusChan chan<- string) (string, error) {
+func (l *Lifecycle) StartService(ctx context.Context, rt sharedRuntime.Runtime, name string, svc types.Service, networkName string, projectPath string, statusChan chan<- string) (string, error) {
 	// Build container config
-	cfg := runtime.ContainerConfig{
+	cfg := sharedRuntime.ContainerConfig{
 		Name:       fmt.Sprintf("devbox-%s", name),
 		Image:      svc.Image,
 		Command:    parseCommand(svc.Command),
@@ -108,7 +109,7 @@ func (l *Lifecycle) StartService(ctx context.Context, rt runtime.Runtime, name s
 			contextDir = filepath.Join(projectPath, contextDir)
 		}
 
-		buildCfg := runtime.BuildConfig{
+		buildCfg := sharedRuntime.BuildConfig{
 			ContextDir: contextDir,
 			Dockerfile: svc.Build.Dockerfile,
 			BuildArgs:  svc.Build.Args,
@@ -120,8 +121,8 @@ func (l *Lifecycle) StartService(ctx context.Context, rt runtime.Runtime, name s
 			return "", fmt.Errorf("build image for %s: %w", name, err)
 		}
 		cfg.Image = builtImage
-	} else if svc.Image != "" {
-		// Pull image if no build config
+	} else if svc.Image != "" && svc.Command == "" {
+		// Pull image only for pure Docker services (image without command override)
 		if err := rt.PullImage(ctx, svc.Image); err != nil {
 			return "", fmt.Errorf("pull image %s: %w", svc.Image, err)
 		}
@@ -150,7 +151,7 @@ func (l *Lifecycle) StartService(ctx context.Context, rt runtime.Runtime, name s
 }
 
 // StopService stops a single service.
-func (l *Lifecycle) StopService(ctx context.Context, rt runtime.Runtime, containerID string, gracePeriod int) error {
+func (l *Lifecycle) StopService(ctx context.Context, rt sharedRuntime.Runtime, containerID string, gracePeriod int) error {
 	if err := rt.StopContainer(ctx, containerID, gracePeriod); err != nil {
 		return fmt.Errorf("stop container %s: %w", containerID, err)
 	}
@@ -158,12 +159,12 @@ func (l *Lifecycle) StopService(ctx context.Context, rt runtime.Runtime, contain
 }
 
 // RemoveService removes a service container.
-func (l *Lifecycle) RemoveService(ctx context.Context, rt runtime.Runtime, containerID string) error {
+func (l *Lifecycle) RemoveService(ctx context.Context, rt sharedRuntime.Runtime, containerID string) error {
 	return rt.RemoveContainer(ctx, containerID, true)
 }
 
 // WaitForHealthy waits for a service to become healthy.
-func (l *Lifecycle) WaitForHealthy(ctx context.Context, rt runtime.Runtime, containerID string, svc types.Service) error {
+func (l *Lifecycle) WaitForHealthy(ctx context.Context, rt sharedRuntime.Runtime, containerID string, svc types.Service) error {
 	if svc.Healthcheck == nil {
 		// No health check defined, assume healthy after brief delay
 		time.Sleep(2 * time.Second)
@@ -217,6 +218,8 @@ func parseCommand(cmd string) []string {
 	if cmd == "" {
 		return nil
 	}
-	// Simple split — a real implementation would handle quotes
+	if goruntime.GOOS == "windows" {
+		return []string{"cmd", "/C", cmd}
+	}
 	return []string{"sh", "-c", cmd}
 }

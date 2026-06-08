@@ -73,12 +73,20 @@ func runPush(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return fmt.Errorf("list containers for %s: %w", name, err)
 		}
+		var sourceImage string
 		if len(containers) == 0 {
-			fmt.Fprintf(os.Stderr, "  Warning: no container found for service %s\n", name)
-			continue
+			// No running container — try to find a local image built by devbox build/start
+			sourceImage, _ = findLocalImage(ctx, dockerClient, "devbox-"+name+":latest")
+			if sourceImage == "" {
+				sourceImage, _ = findLocalImage(ctx, dockerClient, "devboxos-"+name+":latest")
+			}
+			if sourceImage == "" {
+				fmt.Fprintf(os.Stderr, "  Warning: no container or local image found for %s (run 'devbox build %s' first)\n", name, name)
+				continue
+			}
+		} else {
+			sourceImage = containers[0].Image
 		}
-
-		sourceImage := containers[0].Image
 
 		fmt.Printf("  Tagging %s -> %s...\n", sourceImage, pushTag)
 		if err := dockerClient.ImageTag(ctx, sourceImage, pushTag); err != nil {
@@ -126,4 +134,18 @@ func runPush(cmd *cobra.Command, args []string) error {
 
 	fmt.Println("✓ Push complete")
 	return nil
+}
+
+// findLocalImage checks if a Docker image exists locally by tag.
+func findLocalImage(ctx context.Context, dockerClient *client.Client, tag string) (string, error) {
+	images, err := dockerClient.ImageList(ctx, image.ListOptions{
+		Filters: filters.NewArgs(filters.Arg("reference", tag)),
+	})
+	if err != nil {
+		return "", err
+	}
+	if len(images) > 0 {
+		return tag, nil
+	}
+	return "", nil
 }

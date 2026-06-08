@@ -80,7 +80,7 @@ func waitForServiceViaEngine(ctx context.Context, cl *devboxclient.Client, servi
 
 		for _, svc := range resp.Services {
 			if svc.Name == serviceName {
-				if svc.Health == "healthy" || (svc.Health == "" && svc.Status == "running") {
+				if svc.Health == "healthy" || (svc.Health == "" || svc.Health == "none") && svc.Status == "running" {
 					return nil
 				}
 			}
