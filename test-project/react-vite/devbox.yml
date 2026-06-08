@@ -1,13 +1,12 @@
 name: react-vite
 version: "1.0"
-runtimes:
-    node: "18"
 services:
     api:
-        command: npm run dev
-        port: "3000"
+        command: cmd /c python -m http.server 5173
+        working_dir: E:\devboxos\test-project\react-vite
+        port: "5173"
 networking:
     discovery: true
     expose:
-        - 3000
+        - 5173
     egress: default-deny

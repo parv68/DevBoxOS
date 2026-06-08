@@ -440,9 +440,12 @@ func (s *server) SnapshotList(ctx context.Context, req *pb.SnapshotListRequest) 
 }
 
 func (s *server) SnapshotDelete(ctx context.Context, req *pb.SnapshotDeleteRequest) (*pb.StatusResponse, error) {
-	// Delete only needs filesystem access, not Docker
 	mgr := snapshot.NewManager(host.NewHostRuntime(), req.ProjectPath)
-	if err := mgr.Delete(req.SnapshotId); err != nil {
+	id, err := resolveSnapshotID(mgr, req.SnapshotId)
+	if err != nil {
+		return &pb.StatusResponse{Status: "error", Error: err.Error()}, nil
+	}
+	if err := mgr.Delete(id); err != nil {
 		return &pb.StatusResponse{Status: "error", Error: err.Error()}, nil
 	}
 	return &pb.StatusResponse{Status: "ok"}, nil
@@ -451,7 +454,6 @@ func (s *server) SnapshotDelete(ctx context.Context, req *pb.SnapshotDeleteReque
 func (s *server) SnapshotExport(req *pb.SnapshotExportRequest, stream pb.EngineService_SnapshotExportServer) error {
 	mgr := snapshot.NewManager(host.NewHostRuntime(), req.ProjectPath)
 
-	// If no snapshot ID provided, find the latest
 	snapshotID := req.SnapshotId
 	if snapshotID == "" {
 		infos, err := mgr.List()
@@ -460,6 +462,13 @@ func (s *server) SnapshotExport(req *pb.SnapshotExportRequest, stream pb.EngineS
 			return nil
 		}
 		snapshotID = infos[len(infos)-1].ID
+	} else {
+		id, err := resolveSnapshotID(mgr, snapshotID)
+		if err != nil {
+			stream.Send(&pb.StreamResponse{Status: "error", Error: err.Error(), Done: true})
+			return nil
+		}
+		snapshotID = id
 	}
 
 	statusChan := make(chan string, 64)
@@ -1008,4 +1017,28 @@ func main() {
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("Failed to serve: %v", err)
 	}
+}
+
+// resolveSnapshotID resolves a snapshot name or ID to a snapshot directory ID.
+func resolveSnapshotID(mgr *snapshot.Manager, input string) (string, error) {
+	// Try as ID first (fast path — directory exists)
+	infos, err := mgr.List()
+	if err != nil {
+		return "", fmt.Errorf("list snapshots: %w", err)
+	}
+
+	for _, info := range infos {
+		if info.ID == input || strings.HasPrefix(info.ID, input) {
+			return info.ID, nil
+		}
+	}
+
+	// Try as name
+	for _, info := range infos {
+		if info.Name == input {
+			return info.ID, nil
+		}
+	}
+
+	return "", fmt.Errorf("snapshot %q not found", input)
 }

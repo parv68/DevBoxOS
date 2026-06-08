@@ -3,9 +3,11 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"sort"
 
 	"github.com/devboxos/devboxos/cli/internal/client"
 	"github.com/devboxos/devboxos/cli/internal/output"
+	"github.com/devboxos/devboxos/shared/config"
 	"github.com/spf13/cobra"
 )
 
@@ -58,5 +60,51 @@ func runStart(cmd *cobra.Command, args []string) error {
 	}
 
 	output.Success("Environment started successfully")
+
+	printServiceURLs(dir)
 	return nil
+}
+
+func printServiceURLs(dir string) {
+	parser := config.NewParser()
+	cfg, err := parser.Parse(dir)
+	if err != nil {
+		return
+	}
+
+	names := make([]string, 0, len(cfg.Services))
+	for name := range cfg.Services {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	hasURLs := false
+	for _, name := range names {
+		svc := cfg.Services[name]
+		portStr := svc.Port
+		if portStr == "" && len(svc.Ports) > 0 {
+			portStr = svc.Ports[0]
+		}
+		if portStr == "" {
+			continue
+		}
+
+		hostPort := extractHostPort(portStr)
+		if hostPort == "" {
+			continue
+		}
+
+		protocol := svc.Protocol
+		if protocol == "" {
+			protocol = "http"
+		}
+
+		if !hasURLs {
+			fmt.Println()
+			output.Title("Access URLs")
+			hasURLs = true
+		}
+
+		fmt.Printf("  %-15s → %s://localhost:%s\n", name, protocol, hostPort)
+	}
 }

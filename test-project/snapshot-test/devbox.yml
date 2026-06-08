@@ -1,0 +1,6 @@
+name: snapshot-test
+version: "1.0"
+services:
+    writer:
+        command: cmd /c echo %DATE% %TIME% > data.txt
+        port: "0"

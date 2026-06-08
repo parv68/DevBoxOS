@@ -119,7 +119,11 @@ func (o *Orchestrator) Start(ctx context.Context, cfg *types.Config, projectPath
 
 	// Step 3: Create/verify project network
 	statusChan <- fmt.Sprintf("Setting up network for %s...", cfg.Name)
-	netMgr := networking.NewManager(o.hostRT)
+	netRT := o.hostRT
+	if o.dockerRT != nil {
+		netRT = o.dockerRT
+	}
+	netMgr := networking.NewManager(netRT)
 	nw, err := netMgr.EnsureNetwork(ctx, cfg.Name)
 	if err != nil {
 		return fmt.Errorf("setup network: %w", err)
