@@ -121,8 +121,8 @@ func (l *Lifecycle) StartService(ctx context.Context, rt sharedRuntime.Runtime, 
 			return "", fmt.Errorf("build image for %s: %w", name, err)
 		}
 		cfg.Image = builtImage
-	} else if svc.Image != "" {
-		// Pull image if no build config
+	} else if svc.Image != "" && svc.Command == "" {
+		// Pull image only for pure Docker services (image without command override)
 		if err := rt.PullImage(ctx, svc.Image); err != nil {
 			return "", fmt.Errorf("pull image %s: %w", svc.Image, err)
 		}
