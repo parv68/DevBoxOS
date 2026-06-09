@@ -328,8 +328,21 @@ func (c *Collector) collectOnce(rt runtime.Runtime, containerID string, lastTime
 
 	var batch []string
 
+	if n == 0 {
+		// Stream is empty — nothing to process
+		return
+	}
+
 	if n < 8 {
-		// Stream is empty or very short — nothing to process
+		// Very short data (< 8 bytes) — treat as raw text
+		rest, _ := io.ReadAll(reader)
+		allData := append(peekBuf[:n], rest...)
+		for _, line := range strings.Split(strings.TrimSpace(string(allData)), "\n") {
+			if line != "" {
+				batch = append(batch, line)
+			}
+		}
+		c.store.Append(c.project, c.service, batch)
 		return
 	}
 
