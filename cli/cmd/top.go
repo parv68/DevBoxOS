@@ -72,15 +72,19 @@ func init() {
 
 func runTop(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
+	// Try Docker path first
+	dockerAvailable := false
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err == nil {
-		containers, err := dockerClient.ContainerList(ctx, container.ListOptions{
+		_, err := dockerClient.ContainerList(ctx, container.ListOptions{
 			Filters: filters.NewArgs(filters.Arg("label", "devboxos.managed")),
 		})
-		if err == nil && len(containers) == 0 {
-			fmt.Println("  No running services found")
-			return nil
+		if err == nil {
+			dockerAvailable = true
 		}
+	}
+
+	if dockerAvailable {
 		displayStats(ctx, dockerClient)
 		if topOnce {
 			return nil
@@ -145,7 +149,7 @@ func displayHostStats(cl *devboxclient.Client) {
 		nameSet[svc.Name] = true
 	}
 
-	// Scan host processes for matching command lines
+	// Scan host processes for matching env var DEVBOX_SERVICE_NAME
 	procs, _ := process.Processes()
 	type procMatch struct {
 		name string
@@ -157,28 +161,30 @@ func displayHostStats(cl *devboxclient.Client) {
 	found := make(map[string]*procMatch)
 
 	for _, p := range procs {
-		cmdline, _ := p.Cmdline()
-		if cmdline == "" {
-			continue
-		}
-		for _, name := range svcNames {
-			if strings.Contains(cmdline, name) && !strings.Contains(cmdline, "devbox-engine") {
-				cpu, _ := p.CPUPercent()
-				memInfo, _ := p.MemoryInfo()
-				var mem uint64
-				if memInfo != nil {
-					mem = memInfo.RSS
-				}
-				memPct, _ := p.MemoryPercent()
-				found[name] = &procMatch{
-					name:    name,
-					pid:     p.Pid,
-					cpu:     cpu,
-					mem:     mem,
-					memPct:  float64(memPct),
-				}
+		envs, _ := p.Environ()
+		svcName := ""
+		for _, e := range envs {
+			if strings.HasPrefix(e, "DEVBOX_SERVICE_NAME=") {
+				svcName = strings.TrimPrefix(e, "DEVBOX_SERVICE_NAME=")
 				break
 			}
+		}
+		if svcName == "" || !nameSet[svcName] {
+			continue
+		}
+		cpu, _ := p.CPUPercent()
+		memInfo, _ := p.MemoryInfo()
+		var mem uint64
+		if memInfo != nil {
+			mem = memInfo.RSS
+		}
+		memPct, _ := p.MemoryPercent()
+		found[svcName] = &procMatch{
+			name:    svcName,
+			pid:     p.Pid,
+			cpu:     cpu,
+			mem:     mem,
+			memPct:  float64(memPct),
 		}
 	}
 

@@ -176,12 +176,12 @@ func (h *HostRuntime) CreateContainer(ctx context.Context, cfg runtime.Container
 		break
 	}
 
-	// Build exec command
+	// Build exec command (use background context so process outlives the RPC stream)
 	var cmd *exec.Cmd
 	if len(cfg.Command) >= 2 && (cfg.Command[0] == "cmd" || cfg.Command[0] == "cmd.exe" || cfg.Command[0] == "sh" || cfg.Command[0] == "bash") {
-		cmd = exec.CommandContext(ctx, cfg.Command[0], cfg.Command[1:]...)
+		cmd = exec.CommandContext(context.Background(), cfg.Command[0], cfg.Command[1:]...)
 	} else if len(cfg.Command) > 0 {
-		cmd = exec.CommandContext(ctx, cfg.Command[0], cfg.Command[1:]...)
+		cmd = exec.CommandContext(context.Background(), cfg.Command[0], cfg.Command[1:]...)
 	} else {
 		return "", fmt.Errorf("no command specified for service %s", cfg.Name)
 	}
@@ -195,6 +195,7 @@ func (h *HostRuntime) CreateContainer(ctx context.Context, cfg runtime.Container
 
 	// Environment variables
 	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "DEVBOX_SERVICE_NAME="+strings.TrimPrefix(cfg.Name, "devbox-"))
 	for k, v := range cfg.Env {
 		cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", k, v))
 	}
@@ -347,6 +348,11 @@ func (h *HostRuntime) GetContainerInfo(ctx context.Context, id string) (runtime.
 		})
 	}
 
+	pid := int32(0)
+	if proc.Cmd != nil && proc.Cmd.Process != nil {
+		pid = int32(proc.Cmd.Process.Pid)
+	}
+
 	return runtime.ContainerInfo{
 		ID:     id,
 		Name:   proc.Name,
@@ -354,6 +360,7 @@ func (h *HostRuntime) GetContainerInfo(ctx context.Context, id string) (runtime.
 		Ports:  ports,
 		Labels: proc.Labels,
 		Health: "none",
+		PID:    pid,
 	}, nil
 }
 

@@ -36,6 +36,7 @@ type ContainerInfo struct {
 	StartedAt string
 	Health    string // healthy, unhealthy, starting, none
 	Labels    map[string]string
+	PID       int32  // host OS process ID (0 if not applicable)
 }
 
 // PortMapping represents a port binding.
