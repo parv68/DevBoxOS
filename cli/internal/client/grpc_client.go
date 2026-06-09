@@ -164,6 +164,9 @@ func (c *Client) Start(dir string, statusCallback func(status, msg string)) erro
 
 	for {
 		resp, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
 		if err != nil {
 			return fmt.Errorf("stream: %w", err)
 		}
@@ -281,6 +284,9 @@ func (c *Client) Reset(dir string) error {
 
 	for {
 		resp, err := stream.Recv()
+		if err == io.EOF {
+			return nil
+		}
 		if err != nil {
 			return fmt.Errorf("stream: %w", err)
 		}
