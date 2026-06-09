@@ -72,7 +72,6 @@ func init() {
 
 func runTop(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
-
 	// Try Docker path first
 	dockerAvailable := false
 	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
