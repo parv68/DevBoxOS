@@ -287,20 +287,27 @@ func (h *HostRuntime) StopContainer(ctx context.Context, id string, timeoutSecon
 
 	pid := proc.Cmd.Process.Pid
 
+	// Kill the process tree first (taskkill /F /T on Windows)
+	killProcessTree(pid)
+
+	// If process already exited, we are done
+	if proc.Cmd.ProcessState != nil && proc.Cmd.ProcessState.Exited() {
+		return nil
+	}
+
 	// SIGTERM first, then SIGKILL after timeout
 	if timeoutSeconds > 0 {
-		proc.Cmd.Process.Signal(os.Interrupt)
+		_ = proc.Cmd.Process.Signal(os.Interrupt)
 		select {
 		case <-proc.done:
-			killProcessTree(pid)
 			return nil
 		case <-time.After(time.Duration(timeoutSeconds) * time.Second):
 		}
 	}
 
 	// Kill the main process
-	proc.Cmd.Process.Kill()
-	// Kill child processes (cmd /C forks children on Windows)
+	_ = proc.Cmd.Process.Kill()
+	// Kill child processes again to catch any survivors
 	killProcessTree(pid)
 	return nil
 }

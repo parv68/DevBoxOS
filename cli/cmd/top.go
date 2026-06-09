@@ -72,19 +72,32 @@ func init() {
 
 func runTop(cmd *cobra.Command, args []string) error {
 	ctx := cmd.Context()
-	// Try Docker path first
-	dockerAvailable := false
-	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+
+	// Try engine first — covers host-runtime services
+	cl, err := devboxclient.New()
 	if err == nil {
-		_, err := dockerClient.ContainerList(ctx, container.ListOptions{
-			Filters: filters.NewArgs(filters.Arg("label", "devboxos.managed")),
-		})
-		if err == nil {
-			dockerAvailable = true
+		defer cl.Close()
+		initial, err := cl.Status(".")
+		if err == nil && initial.Status == "running" && len(initial.Services) > 0 {
+			displayHostStats(cl)
+			if topOnce {
+				return nil
+			}
+			for {
+				select {
+				case <-ctx.Done():
+					return nil
+				case <-time.After(time.Duration(topInterval) * time.Second):
+					displayHostStats(cl)
+					clearLines(20)
+				}
+			}
 		}
 	}
 
-	if dockerAvailable {
+	// Engine unavailable or no running services: try Docker
+	dockerClient, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err == nil {
 		displayStats(ctx, dockerClient)
 		if topOnce {
 			return nil
@@ -100,33 +113,7 @@ func runTop(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	// Docker unavailable: show host process stats via gopsutil
-	cl, err := devboxclient.New()
-	if err != nil {
-		return fmt.Errorf("Docker not available and engine not running: %w", err)
-	}
-	defer cl.Close()
-
-	initial, err := cl.Status(".")
-	if err == nil && (initial.Status != "running" || len(initial.Services) == 0) {
-		fmt.Println("  No running services found")
-		return nil
-	}
-
-	displayHostStats(cl)
-	if topOnce {
-		return nil
-	}
-
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-time.After(time.Duration(topInterval) * time.Second):
-			displayHostStats(cl)
-			clearLines(20)
-		}
-	}
+	return fmt.Errorf("no running services found and engine not reachable: %w", err)
 }
 
 func displayHostStats(cl *devboxclient.Client) {

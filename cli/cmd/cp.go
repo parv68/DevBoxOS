@@ -51,14 +51,33 @@ func runCP(cmd *cobra.Command, args []string) error {
 			if err := checkWithinProject(dst); err != nil {
 				return err
 			}
-			return copyFromContainer(ctx, dockerClient, src, dst)
+			err = copyFromContainer(ctx, dockerClient, src, dst)
+			if err == nil {
+				return nil
+			}
+			if !isNoContainerError(err) {
+				return err
+			}
+			// No container found: fall through to host path
 		} else if !srcIsRemote && dstIsRemote {
-			return copyToContainer(ctx, dockerClient, src, dst)
+			err = copyToContainer(ctx, dockerClient, src, dst)
+			if err == nil {
+				return nil
+			}
+			if !isNoContainerError(err) {
+				return err
+			}
+			// No container found: fall through to host path
 		}
 	}
 
-	// Docker unavailable: try host process file operations
+	// Docker unavailable or no container for this service: try host file operations
 	return copyHostPath(projectPath, src, dst)
+}
+
+// isNoContainerError checks if the error indicates no Docker container was found.
+func isNoContainerError(err error) bool {
+	return strings.Contains(err.Error(), "no running container found")
 }
 
 func copyHostPath(projectPath, src, dst string) error {

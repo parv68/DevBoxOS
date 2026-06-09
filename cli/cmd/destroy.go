@@ -3,8 +3,10 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
+	"github.com/devboxos/devboxos/cli/internal/client"
 	"github.com/devboxos/devboxos/shared/runtime/docker"
 	"github.com/spf13/cobra"
 )
@@ -34,14 +36,26 @@ func runDestroy(cmd *cobra.Command, args []string) error {
 		projectName = args[0]
 	}
 
-	rt := docker.NewDockerRuntime()
 	ctx := context.Background()
+
+	// First: stop host-runtime services via the engine
+	conn, err := client.New()
+	if err == nil {
+		dir, err := os.Getwd()
+		if err == nil {
+			_ = conn.Stop(dir, projectName)
+		}
+		conn.Close()
+	}
+
+	// Second: clean up Docker containers
+	rt := docker.NewDockerRuntime()
 	if err := rt.Connect(ctx); err != nil {
-		return fmt.Errorf("docker not available: %w", err)
+		fmt.Println("No DevBoxOS containers found (Docker not available)")
+		return nil
 	}
 	defer rt.Close()
 
-	// Build label filter
 	labels := map[string]string{
 		"devboxos.managed": "true",
 	}
