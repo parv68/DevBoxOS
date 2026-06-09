@@ -47,14 +47,16 @@ func runPush(cmd *cobra.Command, args []string) error {
 
 	ctx := context.Background()
 
+	// Parse config to get service definitions
+	dir, _ := os.Getwd()
+	parser := config.NewParser()
+	cfg, parseErr := parser.Parse(dir)
+	if parseErr != nil {
+		return fmt.Errorf("parse devbox config: %w", parseErr)
+	}
+
 	serviceNames := args
 	if pushAll || len(serviceNames) == 0 {
-		dir, _ := os.Getwd()
-		parser := config.NewParser()
-		cfg, parseErr := parser.Parse(dir)
-		if parseErr != nil {
-			return fmt.Errorf("parse devbox config: %w", parseErr)
-		}
 		for name := range cfg.Services {
 			serviceNames = append(serviceNames, name)
 		}
@@ -64,7 +66,20 @@ func runPush(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("specify a service name or use --all")
 	}
 
+	hasWork := false
 	for _, name := range serviceNames {
+		svc, ok := cfg.Services[name]
+		if !ok {
+			fmt.Fprintf(os.Stderr, "  Warning: service %s not found in config\n", name)
+			continue
+		}
+
+		if !config.NeedsDockerService(svc) {
+			fmt.Printf("  Skipping %s: uses host runtime, no Docker image to push\n", name)
+			continue
+		}
+
+		hasWork = true
 		containers, err := dockerClient.ContainerList(ctx, container.ListOptions{
 			Filters: filters.NewArgs(
 				filters.Arg("label", "devboxos.service="+name),
@@ -132,7 +147,9 @@ func runPush(cmd *cobra.Command, args []string) error {
 		fmt.Println()
 	}
 
-	fmt.Println("✓ Push complete")
+	if hasWork {
+		fmt.Println("✓ Push complete")
+	}
 	return nil
 }
 
