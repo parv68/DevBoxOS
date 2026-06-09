@@ -118,7 +118,14 @@
                 "type": "array",
                 "items": { "type": "string" }
               },
-              "read_only": { "type": "boolean" }
+              "read_only": { "type": "boolean" },
+              "seccomp_profile": {
+                "oneOf": [
+                  { "type": "string", "enum": ["unconfined"] },
+                  { "type": "string", "description": "Path to custom seccomp profile JSON" }
+                ]
+              },
+              "apparmor_profile": { "type": "string" }
             }
           }
         }

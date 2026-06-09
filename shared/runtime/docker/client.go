@@ -2,11 +2,13 @@ package docker
 
 import (
 	"archive/tar"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 
@@ -97,6 +99,29 @@ func (d *DockerRuntime) Check(ctx context.Context) error {
 	}
 	_, err := d.cli.Ping(ctx)
 	return err
+}
+
+// VerifyImage verifies a container image signature using external Cosign binary.
+// Returns nil if cosign is not installed (verification skipped gracefully).
+// Returns an error if cosign is installed and verification fails.
+func (d *DockerRuntime) VerifyImage(ctx context.Context, image string) error {
+	cosignPath, err := exec.LookPath("cosign")
+	if err != nil {
+		// cosign not installed — skip verification silently
+		return nil
+	}
+
+	cmd := exec.CommandContext(ctx, cosignPath, "verify", "--insecure-ignore-tlog", image)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		// Check if cosign failed because the image isn't signed at all
+		if bytes.Contains(bytes.ToLower(output), []byte("no signatures found")) ||
+			bytes.Contains(bytes.ToLower(output), []byte("no matching signatures")) {
+			return nil
+		}
+		return fmt.Errorf("image verification failed for %s: %w\n%s", image, err, output)
+	}
+	return nil
 }
 
 // PullImage pulls a container image.
@@ -356,6 +381,29 @@ func (d *DockerRuntime) CreateContainer(ctx context.Context, cfg runtime.Contain
 
 	if cfg.ReadOnly {
 		hostConfig.ReadonlyRootfs = true
+	}
+
+	// Security hardening: drop all capabilities by default, add back only those requested
+	hostConfig.CapDrop = []string{"ALL"}
+	if len(cfg.Capabilities) > 0 {
+		hostConfig.CapAdd = cfg.Capabilities
+	}
+
+	// no-new-privileges blocks privilege escalation via suid binaries
+	if cfg.NoNewPrivileges {
+		hostConfig.SecurityOpt = append(hostConfig.SecurityOpt, "no-new-privileges:true")
+	}
+
+	// Seccomp profile: "" = Docker default, "unconfined" = no seccomp, path = custom
+	if cfg.SeccompProfile != "" && cfg.SeccompProfile != "unconfined" {
+		hostConfig.SecurityOpt = append(hostConfig.SecurityOpt, "seccomp="+cfg.SeccompProfile)
+	} else if cfg.SeccompProfile == "unconfined" {
+		hostConfig.SecurityOpt = append(hostConfig.SecurityOpt, "seccomp=unconfined")
+	}
+
+	// AppArmor profile
+	if cfg.AppArmorProfile != "" {
+		hostConfig.SecurityOpt = append(hostConfig.SecurityOpt, "apparmor="+cfg.AppArmorProfile)
 	}
 
 	containerConfig := &container.Config{

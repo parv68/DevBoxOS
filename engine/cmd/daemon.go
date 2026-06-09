@@ -771,6 +771,41 @@ func (s *server) Doctor(ctx context.Context, req *pb.DoctorRequest) (*pb.DoctorR
 		}
 	}
 
+	// Security diagnostics
+	if cfg != nil {
+		for name, svc := range cfg.Services {
+			if svc.Security == nil {
+				continue
+			}
+			if len(svc.Security.Capabilities) > 0 {
+				issues = append(issues, &pb.DiagnosticIssue{
+					Severity: "info",
+					Message:  fmt.Sprintf("Service %q requests extra capabilities: %v — review if necessary", name, svc.Security.Capabilities),
+				})
+			}
+			if svc.Security.SeccompProfile == "unconfined" {
+				issues = append(issues, &pb.DiagnosticIssue{
+					Severity: "warning",
+					Message:  fmt.Sprintf("Service %q has seccomp disabled (unconfined) — reduces container isolation", name),
+				})
+			}
+			if svc.Security.AppArmorProfile == "unconfined" {
+				issues = append(issues, &pb.DiagnosticIssue{
+					Severity: "warning",
+					Message:  fmt.Sprintf("Service %q has AppArmor disabled (unconfined) — reduces container isolation", name),
+				})
+			}
+		}
+
+		// Check telemetry status
+		if cfg.Telemetry != nil && !cfg.Telemetry.Enabled {
+			issues = append(issues, &pb.DiagnosticIssue{
+				Severity: "info",
+				Message:  "Telemetry disabled via devbox.yml",
+			})
+		}
+	}
+
 	var suggestions []string
 
 	for _, issue := range issues {

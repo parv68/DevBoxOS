@@ -83,9 +83,13 @@ func (l *Lifecycle) StartService(ctx context.Context, rt sharedRuntime.Runtime, 
 		cfg.CPU = svc.Resources.CPU
 	}
 
-	// Set security
+	// Set security — container hardening defaults
+	cfg.NoNewPrivileges = true // always block suid escalation
 	if svc.Security != nil {
 		cfg.ReadOnly = svc.Security.ReadOnly
+		cfg.Capabilities = svc.Security.Capabilities
+		cfg.SeccompProfile = svc.Security.SeccompProfile
+		cfg.AppArmorProfile = svc.Security.AppArmorProfile
 	}
 
 	// Resolve secrets and inject as environment variables
@@ -122,6 +126,10 @@ func (l *Lifecycle) StartService(ctx context.Context, rt sharedRuntime.Runtime, 
 		}
 		cfg.Image = builtImage
 	} else if svc.Image != "" && svc.Command == "" {
+		// Verify image signature before pulling (silently skipped if cosign not installed)
+		if err := rt.VerifyImage(ctx, svc.Image); err != nil {
+			return "", fmt.Errorf("image verification failed for %s: %w", svc.Image, err)
+		}
 		// Pull image only for pure Docker services (image without command override)
 		if err := rt.PullImage(ctx, svc.Image); err != nil {
 			return "", fmt.Errorf("pull image %s: %w", svc.Image, err)

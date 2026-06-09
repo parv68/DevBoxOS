@@ -40,4 +40,7 @@ bench-results.txt
 .env.devbox.age
 *.devbox
 
+# Test projects
+test-e2e-*/
+
 
