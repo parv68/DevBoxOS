@@ -81,9 +81,11 @@ type RestartPolicy struct {
 
 // ServiceSecurity represents per-service security configuration.
 type ServiceSecurity struct {
-	TLS          bool     `yaml:"tls,omitempty" json:"tls,omitempty"`
-	Capabilities []string `yaml:"capabilities,omitempty" json:"capabilities,omitempty"`
-	ReadOnly     bool     `yaml:"read_only,omitempty" json:"read_only,omitempty"`
+	TLS             bool     `yaml:"tls,omitempty" json:"tls,omitempty"`
+	Capabilities    []string `yaml:"capabilities,omitempty" json:"capabilities,omitempty"`
+	ReadOnly        bool     `yaml:"read_only,omitempty" json:"read_only,omitempty"`
+	SeccompProfile  string   `yaml:"seccomp_profile,omitempty" json:"seccomp_profile,omitempty"`
+	AppArmorProfile string   `yaml:"apparmor_profile,omitempty" json:"apparmor_profile,omitempty"`
 }
 
 // Networking represents network configuration.

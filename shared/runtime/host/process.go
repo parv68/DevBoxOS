@@ -152,6 +152,10 @@ func (h *HostRuntime) PullImage(ctx context.Context, image string) error {
 	return fmt.Errorf("%w: PullImage requires Docker", runtime.ErrNotSupported)
 }
 
+func (h *HostRuntime) VerifyImage(ctx context.Context, image string) error {
+	return fmt.Errorf("%w: VerifyImage requires Docker", runtime.ErrNotSupported)
+}
+
 func (h *HostRuntime) BuildImage(ctx context.Context, cfg runtime.BuildConfig, statusChan chan<- string) (string, error) {
 	return "", fmt.Errorf("%w: BuildImage requires Docker", runtime.ErrNotSupported)
 }

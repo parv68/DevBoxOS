@@ -104,6 +104,11 @@ func (m *MockRuntime) PullImage(ctx context.Context, image string) error {
 	return m.pullErr
 }
 
+func (m *MockRuntime) VerifyImage(ctx context.Context, image string) error {
+	m.inc("VerifyImage")
+	return nil
+}
+
 func (m *MockRuntime) BuildImage(ctx context.Context, cfg runtime.BuildConfig, statusChan chan<- string) (string, error) {
 	m.inc("BuildImage")
 	return "mock-image-id", nil

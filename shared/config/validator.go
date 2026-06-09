@@ -237,6 +237,12 @@ func configToMap(cfg *types.Config) map[string]interface{} {
 				secMap["capabilities"] = capList
 			}
 			secMap["read_only"] = svc.Security.ReadOnly
+			if svc.Security.SeccompProfile != "" {
+				secMap["seccomp_profile"] = svc.Security.SeccompProfile
+			}
+			if svc.Security.AppArmorProfile != "" {
+				secMap["apparmor_profile"] = svc.Security.AppArmorProfile
+			}
 			svcMap["security"] = secMap
 		}
 		services[name] = svcMap

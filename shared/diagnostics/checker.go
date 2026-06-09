@@ -69,6 +69,7 @@ func (c *Checker) RunAll(ctx context.Context) []Result {
 	results = append(results, c.checkNetwork())
 	results = append(results, c.checkContainers(ctx))
 	results = append(results, c.checkOrphanedResources(ctx))
+	results = append(results, c.checkSecurity())
 
 	return results
 }
@@ -492,6 +493,51 @@ func hasCycle(graph map[string][]string) bool {
 	}
 
 	return false
+}
+
+func (c *Checker) checkSecurity() Result {
+	result := Result{Name: "Security", Passed: true}
+
+	if c.cfg == nil {
+		result.Message = "No configuration to check"
+		return result
+	}
+
+	var warnings []string
+	for name, svc := range c.cfg.Services {
+		if svc.Security == nil {
+			continue
+		}
+		if len(svc.Security.Capabilities) > 0 {
+			warnings = append(warnings,
+				fmt.Sprintf("service %q requests extra capabilities: %v", name, svc.Security.Capabilities))
+		}
+		if svc.Security.SeccompProfile == "unconfined" {
+			warnings = append(warnings,
+				fmt.Sprintf("service %q has seccomp disabled (unconfined)", name))
+		}
+		if svc.Security.AppArmorProfile == "unconfined" {
+			warnings = append(warnings,
+				fmt.Sprintf("service %q has AppArmor disabled (unconfined)", name))
+		}
+	}
+
+	if len(warnings) > 0 {
+		result.Passed = false
+		result.Severity = SeverityWarning
+		result.Message = fmt.Sprintf("%d security configuration item(s) to review", len(warnings))
+		for _, w := range warnings {
+			result.Issues = append(result.Issues, Issue{
+				Severity:   SeverityWarning,
+				Message:    w,
+				Suggestion: "Review if these security exemptions are necessary",
+			})
+		}
+	} else {
+		result.Message = "Default secure configuration (no custom overrides)"
+	}
+
+	return result
 }
 
 // RunDoctor runs all checks and returns formatted results.

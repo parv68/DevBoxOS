@@ -23,6 +23,12 @@ type ContainerConfig struct {
 	Memory     string // e.g. "512m"
 	CPU        string // e.g. "0.5"
 	ReadOnly   bool
+
+	// Security — container hardening
+	Capabilities    []string // allowlist of Linux capabilities (empty = drop all)
+	SeccompProfile  string   // "" = Docker default, "unconfined", or path to custom profile
+	NoNewPrivileges bool     // block privilege escalation via suid binaries (recommended: true)
+	AppArmorProfile string   // "" = Docker default, "unconfined", or custom profile name
 }
 
 // ContainerInfo holds runtime information about a container.
@@ -78,6 +84,11 @@ type Runtime interface {
 
 	// PullImage pulls a container image.
 	PullImage(ctx context.Context, image string) error
+
+	// VerifyImage verifies a container image signature using Cosign/Sigstore.
+	// Returns nil if verification succeeds or is not configured.
+	// Returns an error if verification is required and fails.
+	VerifyImage(ctx context.Context, image string) error
 
 	// BuildImage builds a container image from a Dockerfile.
 	BuildImage(ctx context.Context, cfg BuildConfig, statusChan chan<- string) (string, error)
