@@ -48,7 +48,7 @@ devbox start
 - ✅ **Diagnostics** — Comprehensive health checks (`devbox doctor`)
 - ✅ **Plugin system** — Hook-based lifecycle plugins
 - ✅ **Cross-platform** — Windows, macOS, Linux
-- ✅ **Auto-detection** — Scan a project and generate config automatically
+- ✅ **Auto-detection** — Scan a project and generate config automatically (Node, Go, Rust, Python, Java, Ruby, PHP, PostgreSQL, MySQL, Redis, MongoDB, Docker)
 - ✅ **Docker Compose import/export** — Migrate between formats
 - ✅ **No daemon dependency** — Most commands fall back to direct Docker SDK calls
 
@@ -261,6 +261,18 @@ cd my-project
 # Auto-detect and generate devbox.yml
 devbox init
 
+# Preview generated config without writing files
+devbox init --dry-run
+
+# Increase monorepo scan depth (default: 2)
+devbox init --max-depth 4
+
+# Review and override detected config interactively
+devbox init --interactive
+
+# Generate CI/CD workflow
+devbox init --ci github-actions
+
 # Or use a template
 devbox init --template react-express-postgres
 
@@ -309,6 +321,10 @@ devbox stop
 | Command | Description | Engine Required |
 |---------|-------------|----------------|
 | `devbox init` | Generate devbox.yml by scanning project | No |
+| `devbox init --dry-run` | Preview generated config without writing files | No |
+| `devbox init --max-depth <n>` | Set monorepo scan depth (default: 2) | No |
+| `devbox init --interactive` | Review and override detected config interactively | No |
+| `devbox init --ci <provider>` | Generate CI workflow (e.g., `github-actions`) | No |
 | `devbox init --from-git <repo>` | Clone a repo and auto-detect configuration | No |
 | `devbox init --template <name>` | Generate a project from a built-in template | No |
 | `devbox init compose-import` | Import docker-compose.yml → devbox.yml | No |
@@ -394,10 +410,27 @@ devbox stop
 
 ### `devbox init` — Project Initialization
 
+DevBoxOS automatically detects your project's language, framework, and services by scanning source files, config files, environment variables, and Docker files. It generates a `devbox.yml` with the detected configuration.
+
 ```bash
 # Auto-detect project type and generate devbox.yml
 cd my-project
 devbox init
+
+# Preview the generated config without writing any files
+devbox init --dry-run
+
+# Deep monorepo scanning (e.g., turborepo, Nx workspaces)
+devbox init --max-depth 4
+
+# Combine flags: preview a deep scan
+devbox init --dry-run --max-depth 4
+
+# Interactive mode — review each detected service and override ports/commands
+devbox init --interactive
+
+# Generate a GitHub Actions workflow that validates, builds, and runs health checks
+devbox init --ci github-actions
 
 # Use a built-in template
 devbox init --template react-express-postgres
@@ -415,6 +448,25 @@ devbox init compose-import
 # Export to Docker Compose
 devbox init compose-export
 ```
+
+#### Auto-detected Frameworks & Services
+
+| Language / Service | Detection Sources | Default Port |
+|---|---|---|
+| **Node.js** (Express, Fastify) | `app.listen()`, `package.json`, `vite.config.*`, `next.config.*` | 3000 |
+| **Go** (net/http, Gin, Echo) | `http.ListenAndServe`, `.Run()`, `.Start()` | 8080 |
+| **Rust** (Axum, Actix) | `TcpListener::bind`, port patterns in `.rs` files | 8080 |
+| **Python** (FastAPI, Flask, Django) | `app.run(port=)`, `runserver`, `--port` CLI flags | 8000 |
+| **Java / Spring Boot** | `server.port` in `application.properties`/`application.yml` | 8080 |
+| **Ruby on Rails** | `port` in `config/puma.rb` (incl. `ENV.fetch` fallback) | 3000 |
+| **PHP / Laravel** | `APP_PORT` in `.env`, `--port` in `composer.json` scripts | 8000 |
+| **PostgreSQL** | `port` in `postgresql.conf` | 5432 |
+| **MySQL** | `port` in `my.cnf` / `my.ini` | 3306 |
+| **Redis** | `port` in `redis.conf` | 6379 |
+| **MongoDB** | `port` in `mongod.conf` | 27017 |
+| **Docker** | `EXPOSE` in `Dockerfile`, ports in `docker-compose.yml` | 8080 |
+
+Detected ports from `.env` files (e.g., `PORT`, `DB_PORT`, `REDIS_PORT`, `MYSQL_PORT`) are also included. Multiple ports in a single `.env` file are all detected independently.
 
 ### `devbox start` — Starting Services
 

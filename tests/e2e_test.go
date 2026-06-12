@@ -63,6 +63,29 @@ func writeFixture(t testing.TB, dir, name string) {
 	}
 }
 
+func writeScannerFixture(t testing.TB, dir, name string) {
+	t.Helper()
+	src := filepath.Join("fixtures", "scanner", name)
+	err := filepath.WalkDir(src, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		rel, _ := filepath.Rel(src, path)
+		target := filepath.Join(dir, rel)
+		if d.IsDir() {
+			return os.MkdirAll(target, 0755)
+		}
+		data, err := os.ReadFile(path)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(target, data, 0644)
+	})
+	if err != nil {
+		t.Fatalf("copy scanner fixture %s: %v", name, err)
+	}
+}
+
 // stackHelpers groups start/stop for E2E tests that need running containers.
 func startStack(t *testing.T, cli, dir string) {
 	t.Helper()
@@ -123,6 +146,8 @@ func TestE2E_InitThenValidate(t *testing.T) {
 	cli := findCLI(t)
 	tmpDir := t.TempDir()
 
+	writeScannerFixture(t, tmpDir, "node-express")
+
 	initCmd := devboxCmd(cli, "init")
 	initCmd.Dir = tmpDir
 	initOut, err := initCmd.CombinedOutput()
@@ -137,9 +162,11 @@ func TestE2E_InitThenValidate(t *testing.T) {
 	}
 }
 
-func TestE2E_InitCreateValidProject(t *testing.T) {
+func TestE2E_InitGoProject(t *testing.T) {
 	cli := findCLI(t)
 	tmpDir := t.TempDir()
+
+	writeScannerFixture(t, tmpDir, "go-gin")
 
 	initCmd := devboxCmd(cli, "init")
 	initCmd.Dir = tmpDir
@@ -149,7 +176,70 @@ func TestE2E_InitCreateValidProject(t *testing.T) {
 	}
 	t.Logf("init output: %s", initOut)
 
-	writeFixture(t, tmpDir, "devbox.yml")
+	ymlPath := filepath.Join(tmpDir, "devbox.yml")
+	if _, err := os.Stat(ymlPath); os.IsNotExist(err) {
+		t.Fatalf("init did not create devbox.yml")
+	}
+}
+
+func TestE2E_InitPythonProject(t *testing.T) {
+	cli := findCLI(t)
+	tmpDir := t.TempDir()
+
+	writeScannerFixture(t, tmpDir, "python-fastapi")
+
+	initCmd := devboxCmd(cli, "init")
+	initCmd.Dir = tmpDir
+	initOut, err := initCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("init failed: %v\n%s", err, initOut)
+	}
+	t.Logf("init output: %s", initOut)
+
+	ymlPath := filepath.Join(tmpDir, "devbox.yml")
+	if _, err := os.Stat(ymlPath); os.IsNotExist(err) {
+		t.Fatalf("init did not create devbox.yml")
+	}
+}
+
+func TestE2E_InitMonorepoMixed(t *testing.T) {
+	cli := findCLI(t)
+	tmpDir := t.TempDir()
+
+	writeScannerFixture(t, tmpDir, "monorepo-mixed")
+
+	initCmd := devboxCmd(cli, "init")
+	initCmd.Dir = tmpDir
+	initOut, err := initCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("init failed: %v\n%s", err, initOut)
+	}
+	t.Logf("init output: %s", initOut)
+
+	ymlPath := filepath.Join(tmpDir, "devbox.yml")
+	if _, err := os.Stat(ymlPath); os.IsNotExist(err) {
+		t.Fatalf("init did not create devbox.yml")
+	}
+}
+
+func TestE2E_InitCreateValidProject(t *testing.T) {
+	cli := findCLI(t)
+	tmpDir := t.TempDir()
+
+	writeScannerFixture(t, tmpDir, "node-express")
+
+	initCmd := devboxCmd(cli, "init")
+	initCmd.Dir = tmpDir
+	initOut, err := initCmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("init failed: %v\n%s", err, initOut)
+	}
+	t.Logf("init output: %s", initOut)
+
+	ymlPath := filepath.Join(tmpDir, "devbox.yml")
+	if _, err := os.Stat(ymlPath); os.IsNotExist(err) {
+		t.Fatalf("init did not create devbox.yml")
+	}
 
 	valCmd := devboxCmd(cli, "validate")
 	valCmd.Dir = tmpDir

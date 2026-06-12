@@ -68,11 +68,13 @@ func BenchmarkCLI_Validate(b *testing.B) {
 func BenchmarkCLI_Init(b *testing.B) {
 	cli := findCLI(b)
 
-	b.ResetTimer()
 	b.ReportAllocs()
 
 	for i := 0; i < b.N; i++ {
 		tmpDir := b.TempDir()
+		writeScannerFixture(b, tmpDir, "node-express")
+
+		b.ResetTimer()
 		cmd := exec.Command(cli, "init")
 		cmd.Dir = tmpDir
 		cmd.Stdout = io.Discard

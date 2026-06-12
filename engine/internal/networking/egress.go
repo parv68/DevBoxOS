@@ -69,3 +69,15 @@ func CheckPortAvailability(port string) error {
 	ln.Close()
 	return nil
 }
+
+// FindFreePort finds the next available port starting from startPort.
+func FindFreePort(startPort int) (int, error) {
+	for port := startPort; port < startPort+1000; port++ {
+		ln, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+		if err == nil {
+			ln.Close()
+			return port, nil
+		}
+	}
+	return 0, fmt.Errorf("no free port found in range %d-%d", startPort, startPort+1000)
+}

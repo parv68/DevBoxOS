@@ -3,6 +3,7 @@ package diagnostics
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -343,7 +344,7 @@ func (c *Checker) checkSecrets() Result {
 func (c *Checker) checkNetwork() Result {
 	result := Result{Name: "Network", Passed: true}
 
-	// Check for port conflicts
+	// Check for port conflicts within the config
 	ports := make(map[string]string)
 	for name, svc := range c.cfg.Services {
 		if svc.Port != "" {
@@ -365,6 +366,32 @@ func (c *Checker) checkNetwork() Result {
 				})
 			}
 			ports[hostPort] = name
+		}
+	}
+
+	// Check for cross-process port conflicts (ports already in use by other programs)
+	for name, svc := range c.cfg.Services {
+		if svc.Port == "" {
+			continue
+		}
+		hostPort := svc.Port
+		for i := len(svc.Port) - 1; i >= 0; i-- {
+			if svc.Port[i] == ':' {
+				hostPort = svc.Port[:i]
+				break
+			}
+		}
+		ln, err := net.Listen("tcp", ":"+hostPort)
+		if err != nil {
+			result.Passed = false
+			result.Severity = SeverityWarning
+			result.Issues = append(result.Issues, Issue{
+				Severity: SeverityWarning,
+				Message:  fmt.Sprintf("Port %s (service %s) is already in use by another process", hostPort, name),
+				Suggestion: fmt.Sprintf("Change the port for service %s, or stop the other process using port %s", name, hostPort),
+			})
+		} else {
+			ln.Close()
 		}
 	}
 
