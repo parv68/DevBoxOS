@@ -9,6 +9,7 @@ import (
 
 	"github.com/devboxos/devboxos/cli/internal/autodetect"
 	"github.com/devboxos/devboxos/cli/internal/output"
+	"github.com/devboxos/devboxos/shared/types"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -17,6 +18,8 @@ var (
 	initFromGit   string
 	initTemplate  string
 	initBranch    string
+	initDryRun    bool
+	initMaxDepth  int
 )
 
 var initCmd = &cobra.Command{
@@ -27,6 +30,8 @@ var initCmd = &cobra.Command{
 Examples:
   devbox init
   devbox init my-project
+  devbox init --dry-run
+  devbox init --max-depth 4
   devbox init --from-git https://github.com/user/project.git
   devbox init --template react-express-postgres`,
 	Args: cobra.MaximumNArgs(1),
@@ -37,6 +42,8 @@ func init() {
 	initCmd.Flags().StringVar(&initFromGit, "from-git", "", "Clone a repository and initialize from it")
 	initCmd.Flags().StringVar(&initTemplate, "template", "", "Use a predefined project template")
 	initCmd.Flags().StringVar(&initBranch, "branch", "", "Git branch to clone (requires --from-git)")
+	initCmd.Flags().BoolVar(&initDryRun, "dry-run", false, "Print generated configuration to stdout without writing files")
+	initCmd.Flags().IntVar(&initMaxDepth, "max-depth", 2, "Maximum subdirectory depth for monorepo scanning")
 }
 
 func runInit(cmd *cobra.Command, args []string) error {
@@ -59,14 +66,16 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 
 	configPath := filepath.Join(dir, "devbox.yml")
-	if _, err := os.Stat(configPath); err == nil {
-		output.Warning("devbox.yml already exists in %s", dir)
-		return nil
+	if !initDryRun {
+		if _, err := os.Stat(configPath); err == nil {
+			output.Warning("devbox.yml already exists in %s", dir)
+			return nil
+		}
 	}
 
 	output.Info("Scanning project...")
 
-	cfg, err := autodetect.AutoDetect(dir)
+	cfg, err := autodetect.AutoDetectWithDepth(dir, initMaxDepth)
 	if err != nil {
 		return fmt.Errorf("auto-detect: %w", err)
 	}
@@ -75,6 +84,12 @@ func runInit(cmd *cobra.Command, args []string) error {
 	data, err := yaml.Marshal(cfg)
 	if err != nil {
 		return fmt.Errorf("marshal config: %w", err)
+	}
+
+	if initDryRun {
+		output.Success("Generated configuration for %s:", projectName)
+		fmt.Println(string(data))
+		return nil
 	}
 
 	if err := os.WriteFile(configPath, data, 0644); err != nil {
@@ -86,8 +101,25 @@ func runInit(cmd *cobra.Command, args []string) error {
 	for name := range cfg.Services {
 		output.Info("  - %s", name)
 	}
+	checkRuntimeAvailability(cfg)
 	output.Info("Run 'devbox start' to launch your environment")
 	return nil
+}
+
+func checkRuntimeAvailability(cfg *types.Config) {
+	runtimeCmds := map[string]string{
+		"node": "node", "go": "go", "python": "python3",
+		"rust": "cargo", "java": "java", "ruby": "ruby", "php": "php",
+	}
+	for rt := range cfg.Runtimes {
+		cmd, ok := runtimeCmds[rt]
+		if !ok {
+			continue
+		}
+		if _, err := exec.LookPath(cmd); err != nil {
+			output.Warning("%s detected but %q not found on PATH", rt, cmd)
+		}
+	}
 }
 
 func runInitFromGit(args []string) error {
@@ -114,7 +146,7 @@ func runInitFromGit(args []string) error {
 
 	output.Info("Detecting project configuration...")
 
-	cfg, err := autodetect.AutoDetect(tmpDir)
+	cfg, err := autodetect.AutoDetectWithDepth(tmpDir, initMaxDepth)
 	if err != nil {
 		return fmt.Errorf("auto-detect: %w", err)
 	}
@@ -143,6 +175,12 @@ func runInitFromGit(args []string) error {
 		return fmt.Errorf("marshal config: %w", err)
 	}
 
+	if initDryRun {
+		output.Success("Generated configuration for %s:", projectName)
+		fmt.Println(string(data))
+		return nil
+	}
+
 	configPath := filepath.Join(projectDir, "devbox.yml")
 	if _, err := os.Stat(configPath); err == nil {
 		output.Warning("devbox.yml already exists in cloned repository")
@@ -158,12 +196,13 @@ func runInitFromGit(args []string) error {
 	for name := range cfg.Services {
 		output.Info("  - %s", name)
 	}
+	checkRuntimeAvailability(cfg)
 	output.Info("Run 'cd %s && devbox start' to launch your environment", projectName)
 	return nil
 }
 
 func runInitWithTemplate(args []string) error {
-	template, ok := templates[initTemplate]
+	tmpl, ok := templates[initTemplate]
 	if !ok {
 		return fmt.Errorf("unknown template %q. Available: %s", initTemplate, availableTemplates())
 	}
@@ -178,9 +217,17 @@ func runInitWithTemplate(args []string) error {
 		projectName = args[0]
 	}
 
+	if initDryRun {
+		output.Success("Template %s would create %d files:", initTemplate, len(tmpl.Files))
+		for name := range tmpl.Files {
+			output.Info("  - %s", name)
+		}
+		return nil
+	}
+
 	output.Info("Creating %s template in %s...", initTemplate, dir)
 
-	for filename, content := range template.Files {
+	for filename, content := range tmpl.Files {
 		filePath := filepath.Join(dir, filename)
 		if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
 			return fmt.Errorf("create directory for %s: %w", filename, err)

@@ -12,6 +12,10 @@ func TestInitCmd_CreatesDevboxYml(t *testing.T) {
 	os.Chdir(tmpDir)
 	defer os.Chdir(origDir)
 
+	// Create minimal project files so autodetect finds something
+	os.WriteFile(filepath.Join(tmpDir, "package.json"), []byte(`{"name":"test"}`), 0644)
+	os.WriteFile(filepath.Join(tmpDir, "index.js"), []byte(`const app = require('express')(); app.listen(3000);`), 0644)
+
 	err := runInit(initCmd, nil)
 	if err != nil {
 		t.Fatalf("runInit failed: %v", err)
@@ -47,6 +51,10 @@ func TestInitCmd_NamedProject(t *testing.T) {
 	origDir, _ := os.Getwd()
 	os.Chdir(tmpDir)
 	defer os.Chdir(origDir)
+
+	// Create minimal project files so autodetect finds something
+	os.WriteFile(filepath.Join(tmpDir, "package.json"), []byte(`{"name":"test"}`), 0644)
+	os.WriteFile(filepath.Join(tmpDir, "index.js"), []byte(`const app = require('express')(); app.listen(3000);`), 0644)
 
 	err := runInit(initCmd, []string{"my-project"})
 	if err != nil {

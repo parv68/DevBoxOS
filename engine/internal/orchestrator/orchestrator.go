@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"sync"
 
 	"github.com/devboxos/devboxos/engine/internal/networking"
@@ -101,10 +102,11 @@ func (o *Orchestrator) Start(ctx context.Context, cfg *types.Config, projectPath
 		return fmt.Errorf("resolve dependencies: %w", err)
 	}
 
-	// Step 2: Check port conflicts
+	// Step 2: Resolve port conflicts (auto-assign if needed)
 	statusChan <- "Checking port availability..."
-	if err := o.checkPortConflicts(cfg); err != nil {
-		return fmt.Errorf("port conflict: %w", err)
+	portWarnings := o.resolvePortConflicts(cfg)
+	for _, w := range portWarnings {
+		statusChan <- w
 	}
 
 	// Step 2.5: Run pre-start plugins
@@ -172,7 +174,7 @@ func (o *Orchestrator) Start(ctx context.Context, cfg *types.Config, projectPath
 			return fmt.Errorf("service %s: Docker required (%s: no command specified)", name, svc.Image)
 		}
 
-		// Check port conflicts for this specific service
+		// Check port availability for this specific service; auto-assign if taken
 		if svc.Port != "" {
 			hostPort := svc.Port
 			if idx := len(svc.Port) - 1; idx > 0 {
@@ -184,8 +186,21 @@ func (o *Orchestrator) Start(ctx context.Context, cfg *types.Config, projectPath
 				}
 			}
 			if err := networking.CheckPortAvailability(hostPort); err != nil {
-				o.cleanup(ctx, containerIDs)
-				return fmt.Errorf("service %s: %w", name, err)
+				portNum, parseErr := strconv.Atoi(hostPort)
+				if parseErr != nil {
+					o.cleanup(ctx, containerIDs)
+					return fmt.Errorf("service %s: invalid port %s: %w", name, hostPort, parseErr)
+				}
+				freePort, findErr := networking.FindFreePort(portNum)
+				if findErr != nil {
+					o.cleanup(ctx, containerIDs)
+					return fmt.Errorf("service %s: %v", name, findErr)
+				}
+				freePortStr := strconv.Itoa(freePort)
+				statusChan <- fmt.Sprintf("Port %s is already in use → service %s auto-assigned to port %d", hostPort, name, freePort)
+				// Update the service port so the container is created with the free port
+				svc.Port = freePortStr
+				cfg.Services[name] = svc
 			}
 		}
 
@@ -448,8 +463,9 @@ func (o *Orchestrator) updateStatus(ctx context.Context, containerIDs map[string
 	}
 }
 
-// checkPortConflicts checks all ports in the config for conflicts.
-func (o *Orchestrator) checkPortConflicts(cfg *types.Config) error {
+// resolvePortConflicts checks all ports in the config and auto-assigns if taken.
+func (o *Orchestrator) resolvePortConflicts(cfg *types.Config) []string {
+	var warnings []string
 	for name, svc := range cfg.Services {
 		if svc.Port == "" {
 			continue
@@ -464,10 +480,23 @@ func (o *Orchestrator) checkPortConflicts(cfg *types.Config) error {
 			}
 		}
 		if err := networking.CheckPortAvailability(hostPort); err != nil {
-			return fmt.Errorf("service %s: %w", name, err)
+			portNum, parseErr := strconv.Atoi(hostPort)
+			if parseErr != nil {
+				warnings = append(warnings, fmt.Sprintf("Service %s: invalid port %s, skipping", name, hostPort))
+				continue
+			}
+			freePort, findErr := networking.FindFreePort(portNum)
+			if findErr != nil {
+				warnings = append(warnings, fmt.Sprintf("Service %s: %v", name, findErr))
+				continue
+			}
+			freePortStr := strconv.Itoa(freePort)
+			svc.Port = freePortStr
+			cfg.Services[name] = svc
+			warnings = append(warnings, fmt.Sprintf("Port %s is already in use → service %s auto-assigned to port %d", hostPort, name, freePort))
 		}
 	}
-	return nil
+	return warnings
 }
 
 // cleanup stops and removes started containers on failure.
