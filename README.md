@@ -267,6 +267,12 @@ devbox init --dry-run
 # Increase monorepo scan depth (default: 2)
 devbox init --max-depth 4
 
+# Review and override detected config interactively
+devbox init --interactive
+
+# Generate CI/CD workflow
+devbox init --ci github-actions
+
 # Or use a template
 devbox init --template react-express-postgres
 
@@ -317,6 +323,8 @@ devbox stop
 | `devbox init` | Generate devbox.yml by scanning project | No |
 | `devbox init --dry-run` | Preview generated config without writing files | No |
 | `devbox init --max-depth <n>` | Set monorepo scan depth (default: 2) | No |
+| `devbox init --interactive` | Review and override detected config interactively | No |
+| `devbox init --ci <provider>` | Generate CI workflow (e.g., `github-actions`) | No |
 | `devbox init --from-git <repo>` | Clone a repo and auto-detect configuration | No |
 | `devbox init --template <name>` | Generate a project from a built-in template | No |
 | `devbox init compose-import` | Import docker-compose.yml → devbox.yml | No |
@@ -417,6 +425,12 @@ devbox init --max-depth 4
 
 # Combine flags: preview a deep scan
 devbox init --dry-run --max-depth 4
+
+# Interactive mode — review each detected service and override ports/commands
+devbox init --interactive
+
+# Generate a GitHub Actions workflow that validates, builds, and runs health checks
+devbox init --ci github-actions
 
 # Use a built-in template
 devbox init --template react-express-postgres

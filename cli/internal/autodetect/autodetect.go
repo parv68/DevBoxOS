@@ -7,6 +7,18 @@ import (
 	"github.com/devboxos/devboxos/shared/types"
 )
 
+func dedupeInts(slice []int) []int {
+	seen := make(map[int]bool)
+	result := make([]int, 0, len(slice))
+	for _, v := range slice {
+		if !seen[v] {
+			seen[v] = true
+			result = append(result, v)
+		}
+	}
+	return result
+}
+
 func AutoDetect(dir string) (*types.Config, error) {
 	return AutoDetectWithDepth(dir, 2)
 }
@@ -95,6 +107,7 @@ func AutoDetectWithDepth(dir string, maxDepth int) (*types.Config, error) {
 			}
 		}
 	}
+	cfg.Networking.Expose = dedupeInts(cfg.Networking.Expose)
 
 	return cfg, nil
 }
