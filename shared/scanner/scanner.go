@@ -127,6 +127,8 @@ func hasProjectIndicator(dir string) bool {
 		"pom.xml", "build.gradle",
 		"Gemfile", "config.ru",
 		"composer.json", "artisan",
+		"postgresql.conf", "my.cnf",
+		"redis.conf", "mongod.conf",
 	}
 	for _, ind := range indicators {
 		if _, err := os.Stat(filepath.Join(dir, ind)); err == nil {
@@ -243,6 +245,42 @@ func (s *Scanner) scanDir(dir string, rel string) (*ScanResult, error) {
 		}
 	}
 
+	if hasFile(dir, "postgresql.conf") {
+		detected = true
+		if result.Language == "" {
+			result.Language = "postgres"
+		}
+		r := scanPostgreSQL(dir)
+		result.Ports = append(result.Ports, r...)
+	}
+
+	if hasFile(dir, "my.cnf") || hasFile(dir, "my.ini") {
+		detected = true
+		if result.Language == "" {
+			result.Language = "mysql"
+		}
+		r := scanMySQL(dir)
+		result.Ports = append(result.Ports, r...)
+	}
+
+	if hasFile(dir, "redis.conf") {
+		detected = true
+		if result.Language == "" {
+			result.Language = "redis"
+		}
+		r := scanRedis(dir)
+		result.Ports = append(result.Ports, r...)
+	}
+
+	if hasFile(dir, "mongod.conf") {
+		detected = true
+		if result.Language == "" {
+			result.Language = "mongo"
+		}
+		r := scanMongoDB(dir)
+		result.Ports = append(result.Ports, r...)
+	}
+
 	if hasFile(dir, ".env") || hasFile(dir, ".env.local") || hasFile(dir, ".env.development") {
 		envPorts, envVars := scanEnvFile(dir)
 		result.Ports = append(result.Ports, envPorts...)
@@ -282,6 +320,45 @@ func (s *Scanner) scanGeneric(dir string, rel string) *ScanResult {
 		result.Dockerfile = "Dockerfile"
 	}
 
+	if hasFile(dir, "docker-compose.yml") {
+		composeSvc := importDockerCompose(filepath.Join(dir, "docker-compose.yml"))
+		for _, ports := range composeSvc {
+			result.Ports = append(result.Ports, ports...)
+		}
+	}
+
+	if hasFile(dir, "postgresql.conf") {
+		if result.Language == "" {
+			result.Language = "postgres"
+		}
+		r := scanPostgreSQL(dir)
+		result.Ports = append(result.Ports, r...)
+	}
+
+	if hasFile(dir, "my.cnf") || hasFile(dir, "my.ini") {
+		if result.Language == "" {
+			result.Language = "mysql"
+		}
+		r := scanMySQL(dir)
+		result.Ports = append(result.Ports, r...)
+	}
+
+	if hasFile(dir, "redis.conf") {
+		if result.Language == "" {
+			result.Language = "redis"
+		}
+		r := scanRedis(dir)
+		result.Ports = append(result.Ports, r...)
+	}
+
+	if hasFile(dir, "mongod.conf") {
+		if result.Language == "" {
+			result.Language = "mongo"
+		}
+		r := scanMongoDB(dir)
+		result.Ports = append(result.Ports, r...)
+	}
+
 	if len(result.Ports) > 0 {
 		result.Ports = dedupePorts(result.Ports)
 		return result
@@ -295,14 +372,18 @@ func hasFile(dir, name string) bool {
 }
 
 var DefaultPorts = map[string]int{
-	"node":   3000,
-	"go":     8080,
-	"rust":   8080,
-	"python": 8000,
-	"docker": 8080,
-	"java":   8080,
-	"ruby":   3000,
-	"php":    8000,
+	"node":     3000,
+	"go":       8080,
+	"rust":     8080,
+	"python":   8000,
+	"docker":   8080,
+	"java":     8080,
+	"ruby":     3000,
+	"php":      8000,
+	"postgres": 5432,
+	"mysql":    3306,
+	"redis":    6379,
+	"mongo":    27017,
 }
 
 func KnownDefault(language string) (int, bool) {
@@ -325,7 +406,7 @@ var (
 
 	exposeRe     = regexp.MustCompile(`EXPOSE\s+(\d+)`)
 
-	envPortRe    = regexp.MustCompile(`^(?:PORT|SERVER_PORT|APP_PORT|API_PORT|HTTP_PORT|BACKEND_PORT|FRONTEND_PORT|VITE_PORT|NEXT_PUBLIC_PORT)\s*=\s*(\d+)$`)
+	envPortRe    = regexp.MustCompile(`^(?:PORT|SERVER_PORT|APP_PORT|API_PORT|HTTP_PORT|BACKEND_PORT|FRONTEND_PORT|VITE_PORT|NEXT_PUBLIC_PORT|DB_PORT|REDIS_PORT|MYSQL_PORT|PG_PORT|MONGO_PORT|ELASTIC_PORT)\s*=\s*(\d+)$`)
 
 	configPortRe = regexp.MustCompile(`[^a-zA-Z]port[:\s]+(\d+)`)
 )
@@ -715,6 +796,81 @@ func scanPHP(dir string) []DetectedPort {
 	return ports
 }
 
+func scanPostgreSQL(dir string) []DetectedPort {
+	candidates := []string{"postgresql.conf", "postgresql.conf.example", "postgresql.conf.sample"}
+	re := regexp.MustCompile(`port\s*=\s*(\d+)`)
+	for _, name := range candidates {
+		data, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			continue
+		}
+		if m := re.FindSubmatch(data); len(m) > 1 {
+			if p, err := strconv.Atoi(string(m[1])); err == nil {
+				return []DetectedPort{{Port: p, Source: "postgresql:conf", File: name, Priority: 10}}
+			}
+		}
+	}
+	return nil
+}
+
+func scanMySQL(dir string) []DetectedPort {
+	candidates := []string{"my.cnf", "my.ini", ".my.cnf"}
+	re := regexp.MustCompile(`port\s*=\s*(\d+)`)
+	for _, name := range candidates {
+		data, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			continue
+		}
+		if m := re.FindSubmatch(data); len(m) > 1 {
+			if p, err := strconv.Atoi(string(m[1])); err == nil {
+				return []DetectedPort{{Port: p, Source: "mysql:conf", File: name, Priority: 10}}
+			}
+		}
+	}
+	return nil
+}
+
+func scanRedis(dir string) []DetectedPort {
+	candidates := []string{"redis.conf", "redis.conf.example", "redis.sentinel.conf"}
+	re := regexp.MustCompile(`port\s+(\d+)`)
+	for _, name := range candidates {
+		data, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			continue
+		}
+		lines := strings.Split(string(data), "\n")
+		for i, line := range lines {
+			trimmed := strings.TrimSpace(line)
+			if trimmed == "" || strings.HasPrefix(trimmed, "#") {
+				continue
+			}
+			if m := re.FindStringSubmatch(trimmed); len(m) > 1 {
+				if p, err := strconv.Atoi(m[1]); err == nil {
+					return []DetectedPort{{Port: p, Source: "redis:conf", File: name, Line: i + 1, Priority: 10}}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func scanMongoDB(dir string) []DetectedPort {
+	candidates := []string{"mongod.conf", "mongodb.conf"}
+	re := regexp.MustCompile(`port\s*[:=]\s*(\d+)`)
+	for _, name := range candidates {
+		data, err := os.ReadFile(filepath.Join(dir, name))
+		if err != nil {
+			continue
+		}
+		if m := re.FindSubmatch(data); len(m) > 1 {
+			if p, err := strconv.Atoi(string(m[1])); err == nil {
+				return []DetectedPort{{Port: p, Source: "mongo:conf", File: name, Priority: 10}}
+			}
+		}
+	}
+	return nil
+}
+
 func scanDockerfile(path string) []DetectedPort {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -771,6 +927,7 @@ func importDockerCompose(path string) map[string][]DetectedPort {
 func scanEnvFile(dir string) ([]DetectedPort, map[string]string) {
 	var ports []DetectedPort
 	vars := make(map[string]string)
+	explicitPortKeys := make(map[int]bool)
 	envFiles := []string{".env", ".env.local", ".env.development", ".env.production"}
 	for _, name := range envFiles {
 		data, err := os.ReadFile(filepath.Join(dir, name))
@@ -778,28 +935,29 @@ func scanEnvFile(dir string) ([]DetectedPort, map[string]string) {
 			continue
 		}
 		lines := strings.Split(string(data), "\n")
-		used := false
 		for i, line := range lines {
 			line = strings.TrimSpace(line)
 			if line == "" || strings.HasPrefix(line, "#") {
 				continue
 			}
-			if m := envPortRe.FindStringSubmatch(line); len(m) > 1 {
-				if p, err := strconv.Atoi(m[1]); err == nil {
-					ports = append(ports, DetectedPort{Port: p, Source: "env:" + name, File: name, Line: i + 1, Priority: 10})
-					used = true
+			if parts := strings.SplitN(line, "=", 2); len(parts) == 2 {
+				key := strings.TrimSpace(parts[0])
+				val := strings.TrimSpace(parts[1])
+				vars[key] = val
+				if m := envPortRe.FindStringSubmatch(line); len(m) > 1 {
+					if p, err := strconv.Atoi(m[1]); err == nil {
+						ports = append(ports, DetectedPort{Port: p, Source: "env:" + name, File: name, Line: i + 1, Priority: 10})
+						explicitPortKeys[p] = true
+					}
 				}
 			}
-			if parts := strings.SplitN(line, "=", 2); len(parts) == 2 {
-				vars[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
-			}
 		}
-		if !used {
-			for k, v := range vars {
-				if strings.Contains(strings.ToUpper(k), "PORT") {
-					if p, err := strconv.Atoi(v); err == nil && p > 0 {
-						ports = append(ports, DetectedPort{Port: p, Source: "env:" + name + ":" + k, File: name, Priority: 7})
-					}
+	}
+	for k, v := range vars {
+		if strings.Contains(strings.ToUpper(k), "PORT") {
+			if p, err := strconv.Atoi(v); err == nil && p > 0 {
+				if !explicitPortKeys[p] {
+					ports = append(ports, DetectedPort{Port: p, Source: "env:PORT:" + k, Priority: 7})
 				}
 			}
 		}

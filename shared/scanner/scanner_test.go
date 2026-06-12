@@ -910,3 +910,103 @@ func TestFixture_PHPLaravelAutoDetect(t *testing.T) {
 	}
 }
 
+func TestFixture_PostgreSQL(t *testing.T) {
+	dir := t.TempDir()
+	copyFixture(t, "postgres-db", dir)
+	s := New()
+	results, err := s.Scan(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 service, got %d", len(results))
+	}
+	if hasPort(results[0].Ports, 5432) == false {
+		t.Fatalf("expected port 5432, got %v", results[0].Ports)
+	}
+	if results[0].Language != "postgres" {
+		t.Fatalf("expected language postgres, got %s", results[0].Language)
+	}
+}
+
+func TestFixture_MySQL(t *testing.T) {
+	dir := t.TempDir()
+	copyFixture(t, "mysql-db", dir)
+	s := New()
+	results, err := s.Scan(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 service, got %d", len(results))
+	}
+	if hasPort(results[0].Ports, 3306) == false {
+		t.Fatalf("expected port 3306, got %v", results[0].Ports)
+	}
+	if results[0].Language != "mysql" {
+		t.Fatalf("expected language mysql, got %s", results[0].Language)
+	}
+}
+
+func TestFixture_Redis(t *testing.T) {
+	dir := t.TempDir()
+	copyFixture(t, "redis-db", dir)
+	s := New()
+	results, err := s.Scan(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 service, got %d", len(results))
+	}
+	if hasPort(results[0].Ports, 6379) == false {
+		t.Fatalf("expected port 6379, got %v", results[0].Ports)
+	}
+	if results[0].Language != "redis" {
+		t.Fatalf("expected language redis, got %s", results[0].Language)
+	}
+}
+
+func TestFixture_MongoDB(t *testing.T) {
+	dir := t.TempDir()
+	copyFixture(t, "mongo-db", dir)
+	s := New()
+	results, err := s.Scan(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 service, got %d", len(results))
+	}
+	if hasPort(results[0].Ports, 27017) == false {
+		t.Fatalf("expected port 27017, got %v", results[0].Ports)
+	}
+	if results[0].Language != "mongo" {
+		t.Fatalf("expected language mongo, got %s", results[0].Language)
+	}
+}
+
+func TestEnvFileMultiplePorts(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, ".env"), "PORT=3000\nDB_PORT=5432\nREDIS_PORT=6379\n")
+	writeFile(t, filepath.Join(dir, "package.json"), `{"name":"test"}`)
+
+	s := New()
+	results, err := s.Scan(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(results) != 1 {
+		t.Fatalf("expected 1 service, got %d", len(results))
+	}
+	if !hasPort(results[0].Ports, 3000) {
+		t.Fatalf("expected port 3000 (explicit PORT), got %v", results[0].Ports)
+	}
+	if !hasPort(results[0].Ports, 5432) {
+		t.Fatalf("expected port 5432 (DB_PORT), got %v", results[0].Ports)
+	}
+	if !hasPort(results[0].Ports, 6379) {
+		t.Fatalf("expected port 6379 (REDIS_PORT), got %v", results[0].Ports)
+	}
+}
+
