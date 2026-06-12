@@ -256,3 +256,87 @@ func TestAutoDetectPHPLaravel(t *testing.T) {
 		t.Fatal("expected php runtime in config")
 	}
 }
+
+func TestAutoDetectPostgreSQL(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "postgresql.conf"), "port = 5432\n")
+
+	cfg, err := AutoDetect(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Services) == 0 {
+		t.Fatal("expected at least 1 service")
+	}
+	for name, svc := range cfg.Services {
+		if svc.Port != "5432" {
+			t.Fatalf("service %s expected port 5432, got %s", name, svc.Port)
+		}
+		if svc.Image != "postgres:16-alpine" {
+			t.Fatalf("service %s expected image postgres:16-alpine, got %s", name, svc.Image)
+		}
+	}
+}
+
+func TestAutoDetectMySQL(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "my.cnf"), "[mysqld]\nport = 3306\n")
+
+	cfg, err := AutoDetect(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Services) == 0 {
+		t.Fatal("expected at least 1 service")
+	}
+	for name, svc := range cfg.Services {
+		if svc.Port != "3306" {
+			t.Fatalf("service %s expected port 3306, got %s", name, svc.Port)
+		}
+		if svc.Image != "mysql:8" {
+			t.Fatalf("service %s expected image mysql:8, got %s", name, svc.Image)
+		}
+	}
+}
+
+func TestAutoDetectRedis(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "redis.conf"), "port 6379\n")
+
+	cfg, err := AutoDetect(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Services) == 0 {
+		t.Fatal("expected at least 1 service")
+	}
+	for name, svc := range cfg.Services {
+		if svc.Port != "6379" {
+			t.Fatalf("service %s expected port 6379, got %s", name, svc.Port)
+		}
+		if svc.Image != "redis:7-alpine" {
+			t.Fatalf("service %s expected image redis:7-alpine, got %s", name, svc.Image)
+		}
+	}
+}
+
+func TestAutoDetectMongoDB(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "mongod.conf"), "port: 27017\n")
+
+	cfg, err := AutoDetect(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.Services) == 0 {
+		t.Fatal("expected at least 1 service")
+	}
+	for name, svc := range cfg.Services {
+		if svc.Port != "27017" {
+			t.Fatalf("service %s expected port 27017, got %s", name, svc.Port)
+		}
+		if svc.Image != "mongo:7" {
+			t.Fatalf("service %s expected image mongo:7, got %s", name, svc.Image)
+		}
+	}
+}

@@ -51,6 +51,16 @@ func configPath() string {
 	return filepath.Join(platform.ConfigDir(), "config.json")
 }
 
+// LoadConfig reads CLI configuration from the local config file.
+func LoadConfig() (map[string]string, error) {
+	return loadConfig()
+}
+
+// SaveConfig writes CLI configuration to the local config file.
+func SaveConfig(cfg map[string]string) error {
+	return saveConfig(cfg)
+}
+
 func loadConfig() (map[string]string, error) {
 	cfg := map[string]string{
 		"telemetry": "true",

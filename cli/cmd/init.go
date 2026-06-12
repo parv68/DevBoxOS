@@ -23,6 +23,7 @@ var (
 	initMaxDepth     int
 	initInteractive  bool
 	initCI           string
+	initForce        bool
 )
 
 var initCmd = &cobra.Command{
@@ -36,6 +37,7 @@ Examples:
   devbox init --dry-run
   devbox init --max-depth 4
   devbox init --interactive
+  devbox init --force
   devbox init --ci github-actions
   devbox init --from-git https://github.com/user/project.git
   devbox init --template react-express-postgres`,
@@ -50,6 +52,7 @@ func init() {
 	initCmd.Flags().BoolVar(&initDryRun, "dry-run", false, "Print generated configuration to stdout without writing files")
 	initCmd.Flags().IntVar(&initMaxDepth, "max-depth", 2, "Maximum subdirectory depth for monorepo scanning")
 	initCmd.Flags().BoolVarP(&initInteractive, "interactive", "i", false, "Review and override detected configuration interactively")
+	initCmd.Flags().BoolVarP(&initForce, "force", "f", false, "Overwrite existing devbox.yml")
 	initCmd.Flags().StringVar(&initCI, "ci", "", "Generate CI workflow (options: github-actions)")
 }
 
@@ -77,10 +80,12 @@ func runInit(cmd *cobra.Command, args []string) error {
 	}
 
 	configPath := filepath.Join(dir, "devbox.yml")
-	if !initDryRun && !initInteractive {
+	if !initDryRun {
 		if _, err := os.Stat(configPath); err == nil {
-			output.Warning("devbox.yml already exists in %s", dir)
-			return nil
+			if !initForce {
+				output.Warning("devbox.yml already exists in %s (use --force to overwrite)", dir)
+				return nil
+			}
 		}
 	}
 

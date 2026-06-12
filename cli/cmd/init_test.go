@@ -65,3 +65,38 @@ func TestInitCmd_NamedProject(t *testing.T) {
 		t.Error("devbox.yml was not created")
 	}
 }
+
+func TestInitCmd_ForceOverwrite(t *testing.T) {
+	tmpDir := t.TempDir()
+	origDir, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(origDir)
+
+	// Create an existing devbox.yml
+	os.WriteFile(filepath.Join(tmpDir, "devbox.yml"), []byte("name: existing\n"), 0644)
+
+	// Without --force, init should warn and not overwrite
+	initForce = false
+	err := runInit(initCmd, nil)
+	if err != nil {
+		t.Fatalf("runInit should return nil when file exists without --force, got: %v", err)
+	}
+	data, _ := os.ReadFile(filepath.Join(tmpDir, "devbox.yml"))
+	if string(data) != "name: existing\n" {
+		t.Errorf("existing file was overwritten without --force: got %q", string(data))
+	}
+
+	// With --force, init should overwrite
+	initForce = true
+	os.WriteFile(filepath.Join(tmpDir, "package.json"), []byte(`{"name":"test"}`), 0644)
+	os.WriteFile(filepath.Join(tmpDir, "index.js"), []byte(`const app = require('express')(); app.listen(3000);`), 0644)
+	err = runInit(initCmd, nil)
+	if err != nil {
+		t.Fatalf("runInit with --force failed: %v", err)
+	}
+	data, _ = os.ReadFile(filepath.Join(tmpDir, "devbox.yml"))
+	if string(data) == "name: existing\n" {
+		t.Error("existing file was NOT overwritten with --force")
+	}
+	initForce = false
+}

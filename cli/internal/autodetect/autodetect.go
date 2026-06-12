@@ -68,8 +68,6 @@ func AutoDetectWithDepth(dir string, maxDepth int) (*types.Config, error) {
 			svc.Ports = rs.AllPorts
 		}
 
-		cfg.Services[name] = svc
-
 		switch rs.Language {
 		case "node":
 			cfg.Runtimes["node"] = "18"
@@ -79,7 +77,17 @@ func AutoDetectWithDepth(dir string, maxDepth int) (*types.Config, error) {
 			cfg.Runtimes["ruby"] = "3.3"
 		case "php":
 			cfg.Runtimes["php"] = "8.3"
+		case "postgres":
+			svc.Image = "postgres:16-alpine"
+		case "mysql":
+			svc.Image = "mysql:8"
+		case "redis":
+			svc.Image = "redis:7-alpine"
+		case "mongo":
+			svc.Image = "mongo:7"
 		}
+
+		cfg.Services[name] = svc
 	}
 
 	if len(cfg.Services) == 0 {
