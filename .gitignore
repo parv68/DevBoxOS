@@ -43,7 +43,4 @@ bench-results.txt
 # Test projects
 test-e2e-*/
 
-# Generated during dev init in monorepo root
-/devbox.yml
-
 
