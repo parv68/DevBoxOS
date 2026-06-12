@@ -246,9 +246,6 @@ devbox version
 ```bash
 # Start the engine daemon (auto-launched on first `devbox start`)
 devbox engine start
-
-# Check status
-devbox engine status   # (coming soon)
 ```
 
 The engine runs as a background process and is automatically started when you run `devbox start` if it's not already running. You can manage it explicitly with `devbox engine {start|stop|restart}`.
@@ -377,7 +374,7 @@ devbox stop
 | `devbox snapshot export <id> <file>` | Export a snapshot to a tarball | No (fallback) |
 | `devbox snapshot import <file>` | Import a snapshot from a tarball | No (fallback) |
 | `devbox snapshot gc` | Garbage collect old snapshots | No (fallback) |
-| `devbox snapshot gc --keep <n>` | Keep only the N most recent snapshots | No (fallback) |
+| `devbox snapshot gc --keep-last <n>` | Keep only the N most recent snapshots | No (fallback) |
 | `devbox snapshot gc --older-than <duration>` | Remove snapshots older than duration | No (fallback) |
 
 ### Secrets Commands
@@ -387,7 +384,7 @@ devbox stop
 | `devbox secrets set <key> <value>` | Set an encrypted secret | No (fallback) |
 | `devbox secrets get <key>` | Retrieve a secret value | No (fallback) |
 | `devbox secrets list` | List all secret keys | No (fallback) |
-| `devbox secrets delete <key>` | Delete a secret | No (fallback) |
+| `devbox secrets rm <key>` | Remove a secret | No (fallback) |
 | `devbox secrets rotate` | Re-encrypt all secrets with a new key | No (fallback) |
 
 ### Utility Commands
@@ -507,7 +504,7 @@ devbox snapshot import ./snapshot.tar
 devbox snapshot load abc12345
 
 # Delete old snapshots
-devbox snapshot gc --keep 5
+devbox snapshot gc --keep-last 5
 devbox snapshot gc --older-than 7d
 
 # Delete a specific snapshot
@@ -522,17 +519,14 @@ Secrets are encrypted with [age](https://age-encryption.org/) (X25519 + ChaCha20
 # Set a secret
 devbox secrets set DATABASE_URL "postgres://user:pass@db:5432/myapp"
 
-# Get a secret (masked by default)
+# Get a secret
 devbox secrets get DATABASE_URL
-
-# Get a secret (unmasked)
-devbox secrets get DATABASE_URL --reveal
 
 # List all secrets
 devbox secrets list
 
-# Delete a secret
-devbox secrets delete DATABASE_URL
+# Remove a secret
+devbox secrets rm DATABASE_URL
 
 # Re-encrypt all secrets with a new key
 devbox secrets rotate
@@ -897,7 +891,7 @@ make lint
 
 **Q: Do I need the engine daemon running all the time?**
 
-A: No. Commands like `init`, `validate`, `build`, `exec`, `shell`, `cp`, `logs`, `graph`, `ps`, `prune`, `destroy`, `snapshot`, `secrets`, and `config` work without the engine by falling back to the Docker SDK directly. Only `start`, `stop`, `status`, `reset`, `wait`, `top`, and `engine stop`/`engine restart` require the engine. Use `devbox engine start` to launch it when needed.
+A: No. Commands like `init`, `validate`, `build`, `exec`, `shell`, `cp`, `logs`, `graph`, `ps`, `prune`, `destroy`, `snapshot`, `secrets`, and `config` work without the engine. Only `start`, `stop`, `status`, `reset`, `wait`, `top`, and `engine stop`/`engine restart` require the engine. Use `devbox engine start` to launch it when needed.
 
 **Q: Where is data stored?**
 

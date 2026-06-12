@@ -75,6 +75,14 @@ func AutoDetectWithDepth(dir string, maxDepth int) (*types.Config, error) {
 			if rs.Image != "" {
 				svc.Image = rs.Image
 			}
+		case "postgres":
+			svc.Image = "postgres:16-alpine"
+		case "mysql":
+			svc.Image = "mysql:8"
+		case "redis":
+			svc.Image = "redis:7-alpine"
+		case "mongo":
+			svc.Image = "mongo:7"
 		}
 
 		if rs.BuildCommand != "" {

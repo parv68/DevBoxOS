@@ -62,11 +62,9 @@ func guessCommandName() string {
 func init() {
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(initCmd)
-	rootCmd.AddCommand(startCmd)
 	rootCmd.AddCommand(stopCmd)
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(logsCmd)
 	rootCmd.AddCommand(resetCmd)
 	rootCmd.AddCommand(doctorCmd)
-	rootCmd.AddCommand(configCmd)
 }
